@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import os
 import tensorflow as tf
 import zfit
+from zfit import z
 from pathlib import Path
 
 from service import hist_dict
@@ -23,7 +24,10 @@ def create_vars(data):
 
     data['e_plus_ETRUE_over_p'] = np.divide(data['e_plus_TRUEP_E'], data['e_plus_P'])
     data['e_plus_ETRUE_over_pTR'] = np.divide(data['e_plus_TRUEP_E'], data['e_plus_TRACK_P'])
-    # data['e_plus_ETRUE_over_pTRUE'] = np.divide(data['e_plus_TRUEP_E'], data['e_plus_TRUEP'])
+    data['e_plus_ETRUE_over_pTRUE'] = np.divide(data['e_plus_TRUEP_E'],
+                                                np.vectorize(calc_momentum)(data.e_plus_TRUEP_X,
+                                                                            data.e_plus_TRUEP_Y,
+                                                                            data.e_plus_TRUEP_Z))
     # E/p for K
     data['K_Ecal_over_pTR'] = np.divide(data['K_Kst_CaloEcalE'], data['K_Kst_TRACK_P'])
     data['K_Ecal_over_p'] = np.divide(data['K_Kst_CaloEcalE'], data['K_Kst_P'])
@@ -32,14 +36,20 @@ def create_vars(data):
                                                                  data.K_Kst_CaloSpdE,
                                                                  data.K_Kst_CaloPrsE),
                                        data['K_Kst_P'])
+    data['K_Kst_ETRUE_over_p'] = np.divide(data['K_Kst_TRUEP_E'], data['K_Kst_P'])
+    data['K_Kst_ETRUE_over_pTR'] = np.divide(data['K_Kst_TRUEP_E'], data['K_Kst_TRACK_P'])
+    data['K_Kst_ETRUE_over_pTRUE'] = np.divide(data['K_Kst_TRUEP_E'],
+                                               np.vectorize(calc_momentum)(data.K_Kst_TRUEP_X,
+                                                                           data.K_Kst_TRUEP_Y,
+                                                                           data.K_Kst_TRUEP_Z))
     # E/p for e minus
     data['e_minus_Ecal_over_pTR'] = np.divide(data['e_minus_CaloEcalE'], data['e_minus_TRACK_P'])
     data['e_minus_Ecal_over_p'] = np.divide(data['e_minus_CaloEcalE'], data['e_minus_P'])
     data['e_minus_Efull_over_p'] = np.divide(np.vectorize(calc_full_e)(data.e_minus_CaloEcalE,
-                                                                      data.e_minus_CaloHcalE,
-                                                                      data.e_minus_CaloSpdE,
-                                                                      data.e_minus_CaloPrsE),
-                                            data['e_minus_P'])
+                                                                       data.e_minus_CaloHcalE,
+                                                                       data.e_minus_CaloSpdE,
+                                                                       data.e_minus_CaloPrsE),
+                                             data['e_minus_P'])
     # dielectron separation
     data['ee_separation'] = np.sqrt(
         np.power(data.e_plus_L0Calo_ECAL_xProjection - data.e_minus_L0Calo_ECAL_xProjection, 2) +
@@ -55,6 +65,24 @@ def create_vars(data):
         np.power(data.K_Kst_L0Calo_HCAL_xProjection - data.e_plus_L0Calo_ECAL_xProjection, 2) +
         np.power(data.K_Kst_L0Calo_HCAL_yProjection - data.e_plus_L0Calo_ECAL_yProjection, 2)
     )
+
+    # some other stuff
+    # data['e_plus_E'] = np.vectorize(calc_e_from_p)(data.e_plus_P)
+
+    data['J_psi_M_recalc'] = np.vectorize(calc_q2)(data.e_plus_PE, data.e_minus_PE,
+                                                   data.e_plus_PX, data.e_minus_PX,
+                                                   data.e_plus_PY, data.e_minus_PY,
+                                                   data.e_plus_PZ, data.e_minus_PZ)
+
+    data['ee_cosTheta'] = np.vectorize(calc_cosTheta)(data.e_plus_P, data.e_minus_P,
+                                                      data.e_plus_PX, data.e_minus_PX,
+                                                      data.e_plus_PY, data.e_minus_PY,
+                                                      data.e_plus_PZ, data.e_minus_PZ)
+
+    data['e_plus_CaloFullE'] = np.vectorize(calc_full_e)(data.e_plus_CaloEcalE, data.e_plus_CaloHcalE,
+                                                         data.e_plus_CaloSpdE, data.e_plus_CaloPrsE)
+    data['K_Kst_CaloFullE'] = np.vectorize(calc_full_e)(data.K_Kst_CaloEcalE, data.K_Kst_CaloHcalE,
+                                                        data.K_Kst_CaloSpdE, data.K_Kst_CaloPrsE)
     return data
 
 
@@ -76,12 +104,18 @@ def read_file(path, branches, filename, maxevts=1000000):
     #     data_MU = tree.arrays(branches, library='pd')
 
     data_MD = pd.DataFrame()
-    sample = uproot.open(f'{path}/{prefix}_2018_MD.root')[treename]
+    if not path == '':
+        sample = uproot.open(f'{path}/{prefix}_2018_MD.root')[treename]
+    else:
+        sample = uproot.open(f'{prefix}_2018_MD.root')[treename]
     for df in sample.iterate(branches, library='pd', entry_stop=maxevts):
         data_MD = pd.concat([data_MD, df])
 
     data_MU = pd.DataFrame()
-    sample = uproot.open(f'{path}/{prefix}_2018_MU.root')[treename]
+    if not path == '':
+        sample = uproot.open(f'{path}/{prefix}_2018_MU.root')[treename]
+    else:
+        sample = uproot.open(f'{prefix}_2018_MU.root')[treename]
     for df in sample.iterate(branches, library='pd', entry_stop=maxevts):
         data_MU = pd.concat([data_MU, df])
 
@@ -90,7 +124,7 @@ def read_file(path, branches, filename, maxevts=1000000):
     return data_df
 
 
-def common_cuts(data_df, filename):
+def common_cuts(data_df, filename, PIDcut=3):
     # ELECTRON TRUTH-MATCHING
     # if 'Kee' in filename:
     # ele_cuts = 'abs(e_minus_TRUEID) == 11 and abs(e_plus_TRUEID) == 11'# \
@@ -103,7 +137,8 @@ def common_cuts(data_df, filename):
     # data_df.query(ele_cuts, inplace=True)
 
     # KAON-ELECTRON MIS-ID
-    B2eee_cut = 'e_plus_PIDe > 3 and e_minus_PIDe > 3 and K_Kst_PIDe > 3'
+    PIDcut_K = PIDcut
+    B2eee_cut = f'e_plus_PIDe > {PIDcut} and e_minus_PIDe > {PIDcut} and K_Kst_PIDe > {PIDcut_K}'
     data_df.query(B2eee_cut, inplace=True)
     print(f'NUMBER OF EVENTS AFTER PID CUTS: {len(data_df.index)}')
 
@@ -149,11 +184,15 @@ def calc_cosTheta(p1, p2, px1, px2, py1, py2, pz1, pz2):
     return np.divide(px1 * px2 + py1 * py2 + pz1 * pz2, p1 * p2)
 
 
-def plot_hist(x, title, hist_dict, path='/home/roman/B2eee/Plots/'):
+def calc_momentum(px, py, pz):
+    return np.sqrt(px ** 2 + py ** 2 + pz ** 2)
+
+
+def plot_hist(x, title, hist_dict, path='', PIDcut=3):
     plt.clf()
 
     # from service import hist_dict
-    plt_title = hist_dict[title]['plt_title']
+    plt_title = hist_dict[title]['plt_title'] + f', PIDe > {PIDcut}'
     nbins = int(hist_dict[title]['n_bins'])
     xlabel = hist_dict[title]['xlabel']
     xmin = hist_dict[title]['xmin']
@@ -174,14 +213,16 @@ def plot_hist(x, title, hist_dict, path='/home/roman/B2eee/Plots/'):
 
 
 def fit_e_over_p(data, ini_params=None):
-    obs = zfit.Space('E_over_p', limits=(0., 2.5))
+    min = 0.
+    max = 2.5
+    obs = zfit.Space('E_over_p', limits=(min, max))
 
     dcb_mu = zfit.Parameter('dcb_mu', 0.8, 0.2, 1.5)
     dcb_sigma = zfit.Parameter('dcb_sigma', 0.7, 0.1, 2.)
-    nr = zfit.Parameter('dcb_nr', 1., 0.1, 5,)
-    nl = zfit.Parameter('dcb_nl', 1., 0.1, 5,)
-    alphar = zfit.Parameter('dcb_alphar', 1., 0.1, 5,)
-    alphal = zfit.Parameter('dcb_alphar', 1., 0.1, 5,)
+    nr = zfit.Parameter('dcb_nr', 1., 0.1, 5, )
+    nl = zfit.Parameter('dcb_nl', 1., 0.1, 5, )
+    alphar = zfit.Parameter('dcb_alphar', 1., 0.1, 5, )
+    alphal = zfit.Parameter('dcb_alphal', 1., 0.1, 5, )
 
     n_events = zfit.Parameter('dcb_yield', len(data.index), step_size=1)
 
@@ -190,13 +231,49 @@ def fit_e_over_p(data, ini_params=None):
     model = dcb.create_extended(n_events)
 
     nll = zfit.loss.ExtendedUnbinnedNLL(model=model, data=data)
+    minimizer = zfit.minimize.Minuit()
+    result = minimizer.minimize(nll)
+    info = result.info.get('original')
+    if result.converged:
+        print('converged')
+    if info.is_valid:
+        print('valid')
+
+    params = result.params
+    print(params)
+
+    plt.clf()
+    axes = plt.gca()
+    lower, upper = obs.limits
+    bin_num = 50
+    x_plot = np.linspace(lower[-1][0], upper[0][0], num=1000)
+    y_plot = zfit.run(model.pdf(x_plot, norm_range=obs))
+    # plt.text(0.05, 0.9, mu_string, ha="left", va="top", family='sans-serif', transform=axes.transAxes, fontsize=9)
+    # plt.text(0.75, 0.85, sigma_string, ha="left", va="top", family='sans-serif', transform=axes.transAxes, fontsize=9)
+    plt.plot(x_plot, y_plot * len(data) / bin_num * obs.area(), color='xkcd:black', label='CrystalBall')
+    # plt.hist(data['ratio'], bins=50, range=(min , max))
+    width = (max - min) / bin_num
+    bins = [min + x * width for x in range(bin_num + 1)]
+    bin_centres = [min + width / 2 + x * width for x in range(bin_num)]
+    hist_data, binning = np.histogram(data.values, bins=bins)
+    axes.errorbar(x=bin_centres, y=hist_data,
+                  yerr=np.sqrt(hist_data),
+                  fmt='ko', markersize='2', label='E/p')
+    plt.title("E/p ratio")
+    plt.legend()
+    plt.savefig(plot_path + '/Efull_over_p_fit_cb.jpg')
+    plt.text(0.05, 0.9, params, ha="left", va="top", family='sans-serif', transform=axes.transAxes, fontsize=9)
+    plt.savefig(plot_path + '/ratio_params_cb.jpg')
+    plt.clf()
+
+    return None  # TODO
 
 
 if __name__ == '__main__':
-    path = '/home/roman/B2eee'
+    path = ''
     filename = 'Kee'
     # plot_path_full = '/home/roman/B2eee/Plots/' + str(filename) + '_2809_1'
-    plot_path = '/home/roman/B2eee/Plots/' + str(filename) + '_3009_1'
+    plot_path = 'Plots/' + str(filename) + '_1110_test'
     if not os.path.exists(plot_path):
         os.makedirs(plot_path)
 
@@ -216,53 +293,40 @@ if __name__ == '__main__':
                 'e_plus_P', 'e_plus_PT', 'e_plus_PE', 'e_plus_TRACK_P',
                 'e_minus_P', 'e_minus_TRACK_P',
                 'e_plus_PX', 'e_plus_PY', 'e_plus_PZ',
-                 'e_minus_PT', 'e_minus_PE',
+                'e_minus_PT', 'e_minus_PE',
                 'e_minus_PX', 'e_minus_PY', 'e_minus_PZ',
                 'e_plus_TRUEP_E', 'e_minus_TRUEP_E', 'K_Kst_TRUEP_E',
+                'e_plus_TRUEP_X', 'e_minus_TRUEP_X', 'K_Kst_TRUEP_X',
+                'e_plus_TRUEP_Y', 'e_minus_TRUEP_Y', 'K_Kst_TRUEP_Y',
+                'e_plus_TRUEP_Z', 'e_minus_TRUEP_Z', 'K_Kst_TRUEP_Z',
                 'e_minus_PIDe',
                 'e_plus_L0Calo_ECAL_xProjection', 'e_minus_L0Calo_ECAL_xProjection', 'K_Kst_L0Calo_HCAL_xProjection',
                 'e_plus_L0Calo_ECAL_yProjection', 'e_minus_L0Calo_ECAL_yProjection', 'K_Kst_L0Calo_HCAL_yProjection',
                 # 'J_psi_1S_M',
                 'B_plus_M', 'B_plus_BKGCAT', 'e_plus_RichDLLe', 'K_Kst_RichDLLe']
 
+    PIDcut = 3
+
     Kee_data = read_file(path, branches, filename, maxevts=100000000)
-    cut_data = common_cuts(Kee_data.copy(), filename)
-    # Kee_data['e_plus_E'] = np.vectorize(calc_e_from_p)(Kee_data.e_plus_P)
-
-    Kee_data['J_psi_M_recalc'] = np.vectorize(calc_q2)(Kee_data.e_plus_PE, Kee_data.e_minus_PE,
-                                                 Kee_data.e_plus_PX, Kee_data.e_minus_PX,
-                                                 Kee_data.e_plus_PY, Kee_data.e_minus_PY,
-                                                 Kee_data.e_plus_PZ, Kee_data.e_minus_PZ)
-
-
-    Kee_data['ee_cosTheta'] = np.vectorize(calc_cosTheta)(Kee_data.e_plus_P, Kee_data.e_minus_P,
-                                                          Kee_data.e_plus_PX, Kee_data.e_minus_PX,
-                                                          Kee_data.e_plus_PY, Kee_data.e_minus_PY,
-                                                          Kee_data.e_plus_PZ, Kee_data.e_minus_PZ)
-
-    Kee_data['e_plus_CaloFullE'] = np.vectorize(calc_full_e)(Kee_data.e_plus_CaloEcalE, Kee_data.e_plus_CaloHcalE,
-                                                             Kee_data.e_plus_CaloSpdE, Kee_data.e_plus_CaloPrsE)
-    Kee_data['K_Kst_CaloFullE'] = np.vectorize(calc_full_e)(Kee_data.K_Kst_CaloEcalE, Kee_data.K_Kst_CaloHcalE,
-                                                            Kee_data.K_Kst_CaloSpdE, Kee_data.K_Kst_CaloPrsE)
+    cut_data = common_cuts(Kee_data.copy(), filename, PIDcut=PIDcut)
 
     Kee_data = divide_brem_cats(Kee_data)
     cut_data = divide_brem_cats(cut_data)
     # Kee_data.query('brem_tag == brem_two', inplace=True)
     print(f'NUMBER OF EVENTS AFTER BREM CUT: {len(Kee_data)}')
     # analyze_something(Kee_data, plot_path)
-    # basic_plots(Kee_data, plot_path)
 
     Kee_data = create_vars(Kee_data)
     cut_data = create_vars(cut_data)
+    # Kee_data.query('e_plus_ETRUE_over_pTRUE > 1.003', inplace=True)
+    # cut_data.query('e_plus_ETRUE_over_pTRUE > 1.003', inplace=True)
 
     for key in hist_dict.keys():
         if 'brem' not in key:
-            comp_dict = {'Before cuts': Kee_data[key], 'PIDe > 3': cut_data[key]}
-            plot_hist(comp_dict, key, hist_dict=hist_dict, path=plot_path)
+            comp_dict = {'Before cuts': Kee_data[key], f'PIDe > {PIDcut}': cut_data[key]}
+            plot_hist(comp_dict, key, hist_dict=hist_dict, path=plot_path, PIDcut=PIDcut)
 
-
-
-
+    # fit_e_over_p(cut_data['e_plus_Efull_over_p'])
 
     # NEW STUFF
     # CREATING VARIABLES
@@ -271,9 +335,6 @@ if __name__ == '__main__':
     # electron_cut = 'e_plus_PIDe < 0 and e_plus_PIDK > 3'
     # Kee_data.query(f'({kaon_cut}) and ({electron_cut})', inplace=True)
     # print(f'NUMBER OF EVENTS AFTER K-e PID CUTS: {len(Kee_data.index)}')
-
-    # analyze_something(Kee_data, plot_path)
-    # basic_plots(Kee_data, plot_path)
 
     # 2 electrons from JPsi (e trueid, e mc mother id, don't forget abs
     # change one electrons energy so that it has a mass hypothesis of a proton
