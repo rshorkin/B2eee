@@ -130,6 +130,7 @@ def common_cuts(data_df, filename, PIDcut=3):
     # ele_cuts = 'abs(e_minus_TRUEID) == 11 and abs(e_plus_TRUEID) == 11'# \
     # 'abs(e_plus_MC_MOTHER_ID) == 521 and abs(e_minus_MC_MOTHER_ID) == 521'
 
+
     if 'KJPsiee' in filename:
         ele_cuts = 'abs(e_plus_TRUEID) == 11 and abs(e_minus_TRUEID) == 11 and ' \
                    'abs(e_plus_MC_MOTHER_ID) == 443 and abs(e_minus_MC_MOTHER_ID) == 443 and ' \
@@ -272,8 +273,7 @@ def fit_e_over_p(data, ini_params=None):
 if __name__ == '__main__':
     path = ''
     filename = 'Kee'
-    # plot_path_full = '/home/roman/B2eee/Plots/' + str(filename) + '_2809_1'
-    plot_path = 'Plots/' + str(filename) + '_1110_test'
+    plot_path = 'Plots/' + str(filename) + '_2010_1'
     if not os.path.exists(plot_path):
         os.makedirs(plot_path)
 
@@ -308,6 +308,14 @@ if __name__ == '__main__':
     PIDcut = 3
 
     Kee_data = read_file(path, branches, filename, maxevts=100000000)
+
+    #GENERAL TRUTH-MATCHING
+    #Kee_data.query('B_plus_BKGCAT == 0 or B_plus_BKGCAT == 20 or B_plus_BKGCAT == 40 or B_plus_BKGCAT == 50', inplace = True)
+    plt.hist(Kee_data["B_plus_BKGCAT"], bins = [0,10, 20, 30, 40, 50, 60, 63, 66, 70, 80, 100, 110, 120, 130, 140])
+    plt.title("B_plus_BKGCAT")
+    plt.savefig(plot_path+"/B_plus_BKGCAT.png")
+    plt.clf()
+
     cut_data = common_cuts(Kee_data.copy(), filename, PIDcut=PIDcut)
 
     Kee_data = divide_brem_cats(Kee_data)
