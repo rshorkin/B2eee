@@ -86,7 +86,7 @@ def create_vars(data):
     return data
 
 
-def read_file(path, branches, filename, maxevts=1000000):
+def read_file(path, branches, filename, maxevts=200000):
     if 'Kee' in filename:
         prefix = 'Kee'
     elif 'KJPsiee' in filename:
@@ -130,17 +130,34 @@ def common_cuts(data_df, filename, PIDcut=3):
     # ele_cuts = 'abs(e_minus_TRUEID) == 11 and abs(e_plus_TRUEID) == 11'# \
     # 'abs(e_plus_MC_MOTHER_ID) == 521 and abs(e_minus_MC_MOTHER_ID) == 521'
 
-    # if 'KJPsiee' in filename:
-       #  ele_cuts = 'abs(e_plus_TRUEID) == 11 and abs(e_minus_TRUEID) == 11 and ' \
-       #             'abs(e_plus_MC_MOTHER_ID) == 443 and abs(e_minus_MC_MOTHER_ID) == 443 and ' \
-       #             'abs(e_plus_MC_GD_MOTHER_ID) == 521 and abs(e_minus_MC_GD_MOTHER_ID) == 521'
-    # data_df.query(ele_cuts, inplace=True)
+    if 'KJPsiee' in filename:
+        ele_cuts = 'abs(e_plus_TRUEID) == 11 and abs(e_minus_TRUEID) == 11 and ' \
+                   'abs(e_plus_MC_MOTHER_ID) == 443 and abs(e_minus_MC_MOTHER_ID) == 443 and ' \
+                   'abs(e_plus_MC_GD_MOTHER_ID) == 521 and abs(e_minus_MC_GD_MOTHER_ID) == 521 and ' \
+                   'abs(K_Kst_TRUEID) == 321 and abs(K_Kst_MC_MOTHER_ID) == 521 and B_plus_BKGCAT == 0'
+        JPsi_presel = '(J_psi_1S_M/1000.) ** 2 > 6 and (J_psi_1S_M/1000.) ** 2 < 12.96'
+        B_plus_M_cut = 'B_plus_DTFM_M > 5200 and B_plus_DTFM_M < 5680'
+    data_df.query(f'{ele_cuts} and {JPsi_presel} and {B_plus_M_cut}', inplace=True)
+
+    # ===========================================================
+    # KJPsiee sample
+    # Truthmatching сuts
+    # ID match + B_plus_BKGCAT == 0: 111 454 / 400 000
+    # ID match: 143 415 / 400 000
+    # B_plus_BKGCAT: 111 793 / 400 000
+    #
+    # ID match + J_psi_1S_BKGCAT: 112 963 / 400 000
+    # J_psi_1S_BKGCAT: 133 337 / 400 000
+    #
+    # ID match + B_plus_BKGCAT + J_psi_1S_BKGCAT: 111 454 / 400 000
+    # B_plus_BKGCAT + J_psi_1S_BKGCAT: 111 793 / 400 000
+    # ===========================================================
 
     # KAON-ELECTRON MIS-ID
-    PIDcut_K = PIDcut
-    B2eee_cut = f'e_plus_PIDe > {PIDcut} and e_minus_PIDe > {PIDcut} and K_Kst_PIDe > {PIDcut_K}'
-    data_df.query(B2eee_cut, inplace=True)
-    print(f'NUMBER OF EVENTS AFTER PID CUTS: {len(data_df.index)}')
+    # PIDcut_K = PIDcut
+    # B2eee_cut = f'e_plus_PIDe > {PIDcut} and e_minus_PIDe > {PIDcut} and K_Kst_PIDe > {PIDcut_K}'
+    # data_df.query(B2eee_cut, inplace=True)
+    print(f'NUMBER OF EVENTS AFTER CUTS: {len(data_df.index)}')
 
     # LOW MOMENTUM CUT
     # data_df.query('e_plus_P > 100000', inplace = True)
@@ -288,21 +305,20 @@ def fit_e_over_p(data, ini_params=None):
 
 if __name__ == '__main__':
     path = ''
-    filename = 'Kee'
+    filename = 'KJPsiee'
     # plot_path_full = '/home/roman/B2eee/Plots/' + str(filename) + '_2809_1'
-    plot_path = 'Plots/' + str(filename) + '_1210_1'
+    plot_path = 'Plots/' + str(filename) + '_debug_test'
     if not os.path.exists(plot_path):
         os.makedirs(plot_path)
 
     # if not os.path.exists(plot_path_full):
     #     os.makedirs(plot_path_full)
     branches = ['nTracks', 'nSPDHits',
-                #   'e_minus_TRUEID', 'e_minus_MC_MOTHER_ID', 'e_minus_MC_GD_MOTHER_ID',
-                #   'e_plus_TRUEID', 'e_plus_MC_MOTHER_ID', 'e_plus_MC_GD_MOTHER_ID',
+                'e_minus_TRUEID', 'e_minus_MC_MOTHER_ID', 'e_minus_MC_GD_MOTHER_ID',
+                'e_plus_TRUEID', 'e_plus_MC_MOTHER_ID', 'e_plus_MC_GD_MOTHER_ID',
                 'e_plus_BremMultiplicity', 'e_minus_BremMultiplicity',
                 'K_Kst_PIDe', 'K_Kst_PIDK', 'e_plus_PIDe', 'e_plus_PIDK',
-                #     'K_Kst_ProbNNe', 'K_Kst_ProbNNk', 'K_Kst_ProbNNpi', 'K_Kst_TRUEID',
-                # 'K_Kst_RichDLLe', 'K_Kst_RichDLLk',
+                'K_Kst_TRUEID', 'K_Kst_MC_MOTHER_ID', 'J_psi_1S_BKGCAT', 'B_plus_BKGCAT',
                 'K_Kst_CaloEcalE', 'K_Kst_CaloHcalE', 'K_Kst_CaloSpdE', 'K_Kst_CaloPrsE',
                 'e_plus_CaloEcalE', 'e_plus_CaloHcalE', 'e_plus_CaloSpdE', 'e_plus_CaloPrsE',
                 'e_minus_CaloEcalE', 'e_minus_CaloHcalE', 'e_minus_CaloSpdE', 'e_minus_CaloPrsE',
@@ -319,8 +335,8 @@ if __name__ == '__main__':
                 'e_minus_PIDe',
                 'e_plus_L0Calo_ECAL_xProjection', 'e_minus_L0Calo_ECAL_xProjection', 'K_Kst_L0Calo_HCAL_xProjection',
                 'e_plus_L0Calo_ECAL_yProjection', 'e_minus_L0Calo_ECAL_yProjection', 'K_Kst_L0Calo_HCAL_yProjection',
-                # 'J_psi_1S_M',
-                'B_plus_M', 'B_plus_BKGCAT',
+                'J_psi_1S_M',
+                'B_plus_M', 'B_plus_DTFM_M',
                 'e_plus_RichDLLe', 'K_Kst_RichDLLe', 'e_minus_RichDLLe',
                 'e_plus_EcalPIDe', 'e_minus_EcalPIDe', 'K_Kst_EcalPIDe',
                 'e_plus_HcalPIDe', 'e_minus_HcalPIDe', 'K_Kst_HcalPIDe',
@@ -328,8 +344,9 @@ if __name__ == '__main__':
 
     PIDcut = 3
 
-    Kee_data = read_file(path, branches, filename, maxevts=100000000)
+    Kee_data = read_file(path, branches, filename, maxevts=200000)
     cut_data = common_cuts(Kee_data.copy(), filename, PIDcut=PIDcut)
+
 
     Kee_data = divide_brem_cats(Kee_data)
     cut_data = divide_brem_cats(cut_data)
