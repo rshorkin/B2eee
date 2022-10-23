@@ -1,113 +1,115 @@
 hist_dict = {
     'e_plus_Ecal_over_pTR':
         {
-            'n_bins': 50,
+            'n_bins': 80,
             'plt_title': r'E/p ratio for e$^+$',
-            'xmin': 0.,
+            'xmin': -2.,
             'xmax': 2.,
             'xlabel': r'ECAL Energy / Track Momentum'
         },
     'e_plus_ETRUE_over_pTR':
         {
-            'n_bins': 50,
+            'n_bins': 40,
             'plt_title': r'E/p ratio for e$^+$',
-            'xmin': 0.,
+            'xmin': -0.,
             'xmax': 2.,
             'xlabel': r'True Energy / Track Momentum'
         },
     'e_plus_ETRUE_over_p':
         {
-            'n_bins': 50,
+            'n_bins': 40,
             'plt_title': r'E/p ratio for e$^+$',
-            'xmin': 0.,
+            'xmin': -0.,
             'xmax': 2.,
             'xlabel': r'True Energy / Full Momentum'
         },
     'e_plus_ETRUE_over_pTRUE':
         {
-            'n_bins': 40,
+
+            'n_bins': 60,
             'plt_title': r'E/p ratio for e$^+$',
-            'xmin': 1.,
+            'xmin': 0.995,
+
             'xmax': 1.025,
             'xlabel': r'True Energy / True Momentum'
         },
     'e_plus_Ecal_over_p':
         {
-            'n_bins': 50,
+            'n_bins': 80,
             'plt_title': r'E/p ratio for e$^+$',
-            'xmin': 0.,
+            'xmin': -2.,
             'xmax': 2.,
             'xlabel': r'ECAL Energy / Full Momentum'
         },
     'e_minus_Ecal_over_pTR':
         {
-            'n_bins': 50,
+            'n_bins': 80,
             'plt_title': r'E/p ratio for e$^-$',
-            'xmin': 0.,
+            'xmin': -2.,
             'xmax': 2.,
             'xlabel': r'ECAL Energy / Track Momentum'
         },
     'e_minus_Ecal_over_p':
         {
-            'n_bins': 50,
+            'n_bins': 80,
             'plt_title': r'E/p ratio for e$^-$',
-            'xmin': 0.,
+            'xmin': -2.,
             'xmax': 2.,
             'xlabel': r'ECAL Energy / Full Momentum'
         },
     'e_minus_Efull_over_p':
         {
-            'n_bins': 50,
+            'n_bins': 80,
             'plt_title': r'E/p ratio for e$^-$',
-            'xmin': 0.,
+            'xmin': -2.,
             'xmax': 2.,
             'xlabel': r'Total Energy / Full Momentum'
         },
     'e_plus_Efull_over_p':
         {
-            'n_bins': 50,
+            'n_bins': 80,
             'plt_title': r'E/p ratio for e$^+$',
-            'xmin': 0.,
+            'xmin': -2.,
             'xmax': 2.,
             'xlabel': r'Total Energy / Full Momentum'
         },
     'K_Ecal_over_pTR':
         {
-            'n_bins': 50,
+            'n_bins': 80,
             'plt_title': r'E/p ratio for K$^+$',
-            'xmin': 0.,
+            'xmin': -2.,
             'xmax': 2.,
             'xlabel': r'ECAL Energy / Track Momentum'
         },
     'K_Ecal_over_p':
         {
-            'n_bins': 50,
+            'n_bins': 80,
             'plt_title': r'E/p ratio for K$^+$',
-            'xmin': 0.,
+            'xmin': -2.,
             'xmax': 2.,
             'xlabel': r'ECAL Energy / Full Momentum'
         },
     'K_Efull_over_p':
         {
-            'n_bins': 50,
+            'n_bins': 80,
             'plt_title': r'E/p ratio for K$^+$',
-            'xmin': 0.,
+            'xmin': -2.,
             'xmax': 2.,
             'xlabel': r'Total Energy / Full Momentum'
         },
     'K_Kst_ETRUE_over_pTR':
         {
-            'n_bins': 50,
+            'n_bins': 40,
             'plt_title': r'E/p ratio for K$^+$',
-            'xmin': 0.,
+            'xmin': -0.,
             'xmax': 2.,
             'xlabel': r'True Energy / Track Momentum'
         },
     'K_Kst_ETRUE_over_p':
         {
-            'n_bins': 50,
+            'n_bins': 40,
             'plt_title': r'E/p ratio for K$^+$',
-            'xmin': 0.,
+            'xmin': -0.,
             'xmax': 2.,
             'xlabel': r'True Energy / Full Momentum'
         },
@@ -203,40 +205,98 @@ hist_dict = {
         {
             'n_bins': 40.,
             'plt_title': r'e$^+$ RICH DLLe',
-            'xmin': -200.,
-            'xmax': 200.,
+            'xmin': -5.,
+            'xmax': 5.,
+            'xlabel': r'e_plus_RichDLLe'
+        },
+    'e_minus_RichDLLe':
+        {
+            'n_bins': 40.,
+            'plt_title': r'e$^+$ RICH DLLe',
+            'xmin': -5.,
+            'xmax': 5.,
             'xlabel': r'e_plus_RichDLLe'
         },
     'K_Kst_RichDLLe':
         {
             'n_bins': 40.,
             'plt_title': r'K$^+$ RICH DLLe',
-            'xmin': -200.,
-            'xmax': 200.,
+            'xmin': -5.,
+            'xmax': 5.,
             'xlabel': r'K_Kst_RichDLLe'
         },
-    'e_brem0_ETrue_over_p':
+    ##################################
+    'e_plus_EcalPIDe':
         {
-            'n_bins': 50,
-            'plt_title': r'E/p ratio for K$^+$',
-            'xmin': 0.,
-            'xmax': 2.,
-            'xlabel': r'True Energy / Full Momentum'
+            'n_bins': 40.,
+            'plt_title': r'e$^+$ Ecal PIDe',
+            'xmin': -5.,
+            'xmax': 5.,
+            'xlabel': r'e_plus_EcalPIDe'
         },
-    'e_brem1_ETrue_over_p':
+    'e_minus_EcalPIDe':
         {
-            'n_bins': 50,
-            'plt_title': r'E/p ratio for K$^+$',
-            'xmin': 0.,
-            'xmax': 2.,
-            'xlabel': r'True Energy / Full Momentum'
+            'n_bins': 40.,
+            'plt_title': r'e$^+$ Ecal PIDe',
+            'xmin': -5.,
+            'xmax': 5.,
+            'xlabel': r'e_plus_EcalPIDe'
         },
-    'e_brem2_ETrue_over_p':
+    'K_Kst_EcalPIDe':
         {
-            'n_bins': 50,
-            'plt_title': r'E/p ratio for K$^+$',
-            'xmin': 0.,
-            'xmax': 2.,
-            'xlabel': r'True Energy / Full Momentum'
+            'n_bins': 40.,
+            'plt_title': r'K$^+$ Ecal PIDe',
+            'xmin': -5.,
+            'xmax': 5.,
+            'xlabel': r'K_Kst_EcalPIDe'
         },
+    'e_plus_HcalPIDe':
+        {
+            'n_bins': 40.,
+            'plt_title': r'e$^+$ Hcal PIDe',
+            'xmin': -5.,
+            'xmax': 5.,
+            'xlabel': r'e_plus_HcalPIDe'
+        },
+    'e_minus_HcalPIDe':
+        {
+            'n_bins': 40.,
+            'plt_title': r'e$^+$ Hcal PIDe',
+            'xmin': -5.,
+            'xmax': 5.,
+            'xlabel': r'e_plus_HcalPIDe'
+        },
+    'K_Kst_HcalPIDe':
+        {
+            'n_bins': 40.,
+            'plt_title': r'K$^+$ Hcal PIDe',
+            'xmin': -5.,
+            'xmax': 5.,
+            'xlabel': r'K_Kst_HcalPID'
+        },
+    'e_plus_BremPIDe':
+        {
+            'n_bins': 40.,
+            'plt_title': r'e$^+$ Brem PIDe',
+            'xmin': -5.,
+            'xmax': 5.,
+            'xlabel': r'e_plus_BremPIDe'
+        },
+    'e_minus_BremPIDe':
+        {
+            'n_bins': 40.,
+            'plt_title': r'e$^+$ Brem PIDe',
+            'xmin': -5.,
+            'xmax': 5.,
+            'xlabel': r'e_plus_BremPIDe'
+        },
+    'K_Kst_BremPIDe':
+        {
+            'n_bins': 40.,
+            'plt_title': r'K$^+$ Brem PIDe',
+            'xmin': -5.,
+            'xmax': 5.,
+            'xlabel': r'K_Kst_BremPIDe'
+        },
+
 }
