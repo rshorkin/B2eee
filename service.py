@@ -25,9 +25,11 @@ hist_dict = {
         },
     'e_plus_ETRUE_over_pTRUE':
         {
+
             'n_bins': 60,
             'plt_title': r'E/p ratio for e$^+$',
             'xmin': 0.995,
+
             'xmax': 1.025,
             'xlabel': r'True Energy / True Momentum'
         },
