@@ -105,11 +105,18 @@ def read_file(path, branches, filename, maxevts=200000):
 
     data_MD = pd.DataFrame()
     if not path == '':
-        sample = uproot.open(f'{path}/{prefix}_2018_MD.root')[treename]
+       # sample = uproot.open(f'{path}/{prefix}_2018_MD.root')[treename]
+        with uproot.open(f'{path}/{prefix}_2018_MD.root') as file:
+            tree = file[treename]
+            data_MD = tree.arrays(branches, library='pandas', entry_stop=maxevts)
     else:
-        sample = uproot.open(f'{prefix}_2018_MD.root')[treename]
-    for df in sample.iterate(branches, library='pd', entry_stop=maxevts):
-        data_MD = pd.concat([data_MD, df])
+      #  sample = uproot.open(f'{prefix}_2018_MD.root')[treename]
+        with uproot.open(f'{prefix}_2018_MD.root') as file:
+            tree = file[treename]
+            data_MD = tree.arrays(branches, library='pandas', entry_stop=maxevts)
+
+    # for df in sample.iterate(branches, library='pd', entry_stop=maxevts):
+    #     data_MD = pd.concat([data_MD, df])
 
     data_MU = pd.DataFrame()
     if not path == '':
@@ -120,6 +127,8 @@ def read_file(path, branches, filename, maxevts=200000):
         data_MU = pd.concat([data_MU, df])
 
     data_df = pd.concat([data_MD, data_MU])
+    if data_df.index.nlevels == 2:
+        data_df = data_MD.loc[(slice(None), 0), :].droplevel(level=1)
     print(f'TOTAL NUMBER OF EVENTS: {len(data_df.index)}')
     return data_df
 
@@ -129,7 +138,6 @@ def common_cuts(data_df, filename, PIDcut=3):
     # if 'Kee' in filename:
     # ele_cuts = 'abs(e_minus_TRUEID) == 11 and abs(e_plus_TRUEID) == 11'# \
     # 'abs(e_plus_MC_MOTHER_ID) == 521 and abs(e_minus_MC_MOTHER_ID) == 521'
-
 
     if 'KJPsiee' in filename:
         ele_cuts = 'abs(e_plus_TRUEID) == 11 and abs(e_minus_TRUEID) == 11 and ' \
@@ -208,7 +216,7 @@ def calc_momentum(px, py, pz):
     return np.sqrt(px ** 2 + py ** 2 + pz ** 2)
 
 
-def plot_hist(x, title, hist_dict, path='', PIDcut=3):
+def plot_hist(x, title, hist_dict, path='', PIDcut=3, normalize=False):
     plt.clf()
 
     # from service import hist_dict
@@ -219,8 +227,9 @@ def plot_hist(x, title, hist_dict, path='', PIDcut=3):
     xmax = hist_dict[title]['xmax']
     if type(x) == dict:
         for label, item in x.items():
-            plt.yscale('log')
-            plt.hist(item, range=(xmin, xmax), bins=nbins, label=label, alpha=0.5)
+            if not normalize:
+                plt.yscale('log')
+            plt.hist(item, range=(xmin, xmax), bins=nbins, label=label, alpha=0.5, density=normalize)
             plt.ylabel(f'Events / {(xmax - xmin) / nbins}')
             plt.legend(loc='upper right')
     else:
@@ -308,8 +317,8 @@ def fit_e_over_p(data, ini_params=None):
 
 if __name__ == '__main__':
     path = ''
-    filename = 'Kee'
-    plot_path = 'Plots/' + str(filename) + '_2010_1'
+    filename = 'KJPsiee'
+    plot_path = 'Plots/' + str(filename) + '_KJPsiee_debug'
     if not os.path.exists(plot_path):
         os.makedirs(plot_path)
 
@@ -346,7 +355,7 @@ if __name__ == '__main__':
 
     PIDcut = 3
 
-    Kee_data = read_file(path, branches, filename, maxevts=100000000)
+    Kee_data = read_file(path, branches, filename, maxevts=100000)
 
     #GENERAL TRUTH-MATCHING
     #Kee_data.query('B_plus_BKGCAT == 0 or B_plus_BKGCAT == 20 or B_plus_BKGCAT == 40 or B_plus_BKGCAT == 50', inplace = True)
@@ -371,7 +380,7 @@ if __name__ == '__main__':
     for key in hist_dict.keys():
 
         comp_dict = {'Before cuts': Kee_data[key], f'PIDe > {PIDcut}': cut_data[key]}
-        plot_hist(comp_dict, key, hist_dict=hist_dict, path=plot_path, PIDcut=PIDcut)
+        plot_hist(comp_dict, key, hist_dict=hist_dict, path=plot_path, PIDcut=PIDcut, normalize=True)
 
     # EXPERIMENTAL
     b_zero_pl = cut_data.loc[cut_data['e_plus_BremMultiplicity'] == 0, ['e_plus_Ecal_over_p', 'e_plus_Ecal_over_pTR']]
