@@ -1,8 +1,11 @@
+import gc
+
 import uproot
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+import sys
 import tensorflow as tf
 import zfit
 from zfit import z
@@ -86,51 +89,86 @@ def create_vars(data):
     return data
 
 
-def read_file(path, branches, filename, maxevts=200000):
+def read_file(path, branches, filename, maxevts=400000):
     if 'Kee' in filename:
         prefix = 'Kee'
     elif 'KJPsiee' in filename:
         prefix = 'KJPsiee'
     else:
         raise FileNotFoundError('Wrong filename, Kee or KJPsiee only!')
-
     treename = 'B2Kee_Tuple/DecayTree'
-    # with uproot.open(f'{path}/{prefix}_2018_MD.root') as file:
-    #     tree = file[treename]
-    #     data_MD = tree.arrays(branches, library='pd')
 
-    # with uproot.open(f'{path}/{prefix}_2018_MU.root') as file:
-    #     tree = file[treename]
-    #     data_MU = tree.arrays(branches, library='pd')
+    full_histos_mu = {key: None for key in hist_dict.keys()}
+    full_histos_md = {key: None for key in hist_dict.keys()}
 
-    data_MD = pd.DataFrame()
+    cut_histos_mu = {key: None for key in hist_dict.keys()}
+    cut_histos_md = {key: None for key in hist_dict.keys()}
+
+    full_num_events = 0
+    cut_num_events = 0
+
     if not path == '':
-       # sample = uproot.open(f'{path}/{prefix}_2018_MD.root')[treename]
-        with uproot.open(f'{path}/{prefix}_2018_MD.root') as file:
-            tree = file[treename]
-            data_MD = tree.arrays(branches, library='pandas', entry_stop=maxevts)
+        sample = uproot.open(f'{path}/{prefix}_2018_MD.root')[treename]
     else:
-      #  sample = uproot.open(f'{prefix}_2018_MD.root')[treename]
-        with uproot.open(f'{prefix}_2018_MD.root') as file:
-            tree = file[treename]
-            data_MD = tree.arrays(branches, library='pandas', entry_stop=maxevts)
+        sample = uproot.open(f'{prefix}_2018_MD.root')[treename]
+    tot_num = min(sample.num_entries, maxevts)
 
-    # for df in sample.iterate(branches, library='pd', entry_stop=maxevts):
-    #     data_MD = pd.concat([data_MD, df])
+    print(f'WORKING ON {prefix} MD FILE...')
 
-    data_MU = pd.DataFrame()
+    for df in sample.iterate(branches, library='pd', entry_stop=maxevts, step_size=20000):
+        if df.index.nlevels == 2:
+            df = df.loc[(slice(None), 0), :].droplevel(level=1)
+        full_num_events = full_num_events + len(df.index)
+        print(f'Currently at {full_num_events} / {tot_num} events...')   # to implement progress bar
+        df = create_vars(df)
+        df = divide_brem_cats(df)
+        for key in hist_dict.keys():
+            full_histos_md[key] = make_hist(df[key], key, hist_dict=hist_dict, hist=full_histos_md[key])
+
+        df = common_cuts(df, filename, PIDcut=3)
+        for key in hist_dict.keys():
+            cut_histos_md[key] = make_hist(df[key], key, hist_dict=hist_dict, hist=cut_histos_md[key])
+        cut_num_events = cut_num_events + len(df.index)
+        del df
+        gc.collect()
+    print(f'FINISHED WITH {prefix} MD FILE!\n*********\nWORKING ON {prefix} MU FILE...')
+
     if not path == '':
         sample = uproot.open(f'{path}/{prefix}_2018_MU.root')[treename]
     else:
         sample = uproot.open(f'{prefix}_2018_MU.root')[treename]
-    for df in sample.iterate(branches, library='pd', entry_stop=maxevts):
-        data_MU = pd.concat([data_MU, df])
+    tot_num = min(sample.num_entries, maxevts)
+    mu_progress = 0
+    for df in sample.iterate(branches, library='pd', entry_stop=maxevts, step_size=20000):
+        if df.index.nlevels == 2:
+            df = df.loc[(slice(None), 0), :].droplevel(level=1)
+        mu_progress = mu_progress + len(df.index)
+        print(f'Currently at {mu_progress} / {tot_num} events...')  # to implement progress bar
+        df = create_vars(df)
+        df = divide_brem_cats(df)
+        for key in hist_dict.keys():
+            full_histos_mu[key] = make_hist(df[key], key, hist_dict=hist_dict, hist=full_histos_mu[key])
+        full_num_events = full_num_events + len(df.index)
 
-    data_df = pd.concat([data_MD, data_MU])
-    if data_df.index.nlevels == 2:
-        data_df = data_MD.loc[(slice(None), 0), :].droplevel(level=1)
-    print(f'TOTAL NUMBER OF EVENTS: {len(data_df.index)}')
-    return data_df
+        df = common_cuts(df, filename, PIDcut=3)
+        for key in hist_dict.keys():
+            cut_histos_mu[key] = make_hist(df[key], key, hist_dict=hist_dict, hist=cut_histos_mu[key])
+        cut_num_events = cut_num_events + len(df.index)
+        del df
+        gc.collect()
+
+    full_histos = {key: None for key in hist_dict.keys()}
+    cut_histos = {key: None for key in hist_dict.keys()}
+
+    for key in full_histos.keys():
+        full_histos[key] = np.add(full_histos_mu[key], full_histos_md[key])
+
+    for key in cut_histos.keys():
+        cut_histos[key] = np.add(cut_histos_mu[key], cut_histos_md[key])
+    print(f'FINISHED WITH {prefix} MU FILE!\n*********')
+    print(f'TOTAL NUMBER OF EVENTS: {full_num_events}')
+    print(f'NUMBER OF EVENTS AFTER CUTS: {cut_num_events}')
+    return {'full': full_histos, 'cut': cut_histos}
 
 
 def common_cuts(data_df, filename, PIDcut=3):
@@ -146,8 +184,11 @@ def common_cuts(data_df, filename, PIDcut=3):
                    'abs(K_Kst_TRUEID) == 321 and abs(K_Kst_MC_MOTHER_ID) == 521 and B_plus_BKGCAT == 0'
         JPsi_presel = '(J_psi_1S_M/1000.) ** 2 > 6 and (J_psi_1S_M/1000.) ** 2 < 12.96'
         B_plus_M_cut = 'B_plus_DTFM_M > 5200 and B_plus_DTFM_M < 5680'
-    data_df.query(f'{ele_cuts} and {JPsi_presel} and {B_plus_M_cut}', inplace=True)
+    data_df.query(f'{ele_cuts}', inplace=True)
+    # print(f'***\nAPPLYING TRUTHMATCHING CUTS. EVENTS REMAINING: {len(data_df.index)}')
 
+    data_df.query(f'{JPsi_presel} and {B_plus_M_cut}', inplace=True)
+    # print(f'***\nAPPLYING PHYSICAL CUTS. EVENTS REMAINING: {len(data_df.index)}')
     # ===========================================================
     # KJPsiee sample
     # Truthmatching сuts
@@ -164,10 +205,10 @@ def common_cuts(data_df, filename, PIDcut=3):
 
     # KAON-ELECTRON MIS-ID
 
-    # PIDcut_K = PIDcut
-    # B2eee_cut = f'e_plus_PIDe > {PIDcut} and e_minus_PIDe > {PIDcut} and K_Kst_PIDe > {PIDcut_K}'
-    # data_df.query(B2eee_cut, inplace=True)
-    print(f'NUMBER OF EVENTS AFTER CUTS: {len(data_df.index)}')
+    PIDcut_K = PIDcut
+    B2eee_cut = f'e_plus_PIDe > {PIDcut} and e_minus_PIDe > {PIDcut} and K_Kst_PIDe > {PIDcut_K}'
+    data_df.query(B2eee_cut, inplace=True)
+    # print(f'***\nAPPLYING PID CUTS. EVENTS REMAINING: {len(data_df.index)}')
 
 
     # LOW MOMENTUM CUT
@@ -216,6 +257,19 @@ def calc_momentum(px, py, pz):
     return np.sqrt(px ** 2 + py ** 2 + pz ** 2)
 
 
+def make_hist(x, title, hist_dict, hist=None):
+    nbins = int(hist_dict[title]['n_bins'])
+    xmin = hist_dict[title]['xmin']
+    xmax = hist_dict[title]['xmax']
+    bin_width = (xmax - xmin) / nbins
+    bins = [xmin + x * bin_width for x in range(nbins + 1)]
+    data_x, _ = np.histogram(x.values, bins=bins)
+    if hist is not None:
+        return np.add(hist, data_x)
+    else:
+        return data_x
+
+
 def plot_hist(x, title, hist_dict, path='', PIDcut=3, normalize=False):
     plt.clf()
 
@@ -225,15 +279,21 @@ def plot_hist(x, title, hist_dict, path='', PIDcut=3, normalize=False):
     xlabel = hist_dict[title]['xlabel']
     xmin = hist_dict[title]['xmin']
     xmax = hist_dict[title]['xmax']
+
+    bin_width = (xmax - xmin) / nbins
+    bins = [xmin + x * bin_width for x in range(nbins)]
+
     if type(x) == dict:
         for label, item in x.items():
             if not normalize:
                 plt.yscale('log')
-            plt.hist(item, range=(xmin, xmax), bins=nbins, label=label, alpha=0.5, density=normalize)
+                plt.bar(height=item, x=bins, align='edge', label=label, alpha=0.5)
+            else:
+                plt.bar(height=item/np.sum(item), width=bin_width, x=bins, align='edge', label=label, alpha=0.5)
             plt.ylabel(f'Events / {(xmax - xmin) / nbins}')
             plt.legend(loc='upper right')
     else:
-        plt.hist(x, range=(xmin, xmax), bins=nbins)
+        plt.bar(height=x, x=bins, align='edge')
         plt.ylabel(f'Events / {(xmax - xmin) / nbins}')
     plt.xlabel(xlabel)
     plt.title(plt_title)
@@ -318,7 +378,7 @@ def fit_e_over_p(data, ini_params=None):
 if __name__ == '__main__':
     path = ''
     filename = 'KJPsiee'
-    plot_path = 'Plots/' + str(filename) + '_KJPsiee_debug'
+    plot_path = 'Plots/' + str(filename) + '_testing'
     if not os.path.exists(plot_path):
         os.makedirs(plot_path)
 
@@ -351,62 +411,42 @@ if __name__ == '__main__':
                 'e_plus_RichDLLe', 'K_Kst_RichDLLe', 'e_minus_RichDLLe',
                 'e_plus_EcalPIDe', 'e_minus_EcalPIDe', 'K_Kst_EcalPIDe',
                 'e_plus_HcalPIDe', 'e_minus_HcalPIDe', 'K_Kst_HcalPIDe',
-                'e_plus_BremPIDe', 'e_minus_BremPIDe', 'K_Kst_BremPIDe']
+                'e_plus_BremPIDe', 'e_minus_BremPIDe', 'K_Kst_BremPIDe',
+                'e_plus_L0Calo_ECAL_region', 'e_minus_L0Calo_ECAL_region', 'K_Kst_L0Calo_HCAL_region']
 
     PIDcut = 3
 
-    Kee_data = read_file(path, branches, filename, maxevts=100000)
-
-    #GENERAL TRUTH-MATCHING
-    #Kee_data.query('B_plus_BKGCAT == 0 or B_plus_BKGCAT == 20 or B_plus_BKGCAT == 40 or B_plus_BKGCAT == 50', inplace = True)
-    plt.hist(Kee_data["B_plus_BKGCAT"], bins = [0,10, 20, 30, 40, 50, 60, 63, 66, 70, 80, 100, 110, 120, 130, 140])
-    plt.title("B_plus_BKGCAT")
-    plt.savefig(plot_path+"/B_plus_BKGCAT.png")
-    plt.clf()
-
-    cut_data = common_cuts(Kee_data.copy(), filename, PIDcut=PIDcut)
-
-    Kee_data = divide_brem_cats(Kee_data)
-    cut_data = divide_brem_cats(cut_data)
-    # Kee_data.query('brem_tag == brem_two', inplace=True)
-    print(f'NUMBER OF EVENTS AFTER BREM CUT: {len(Kee_data)}')
-    # analyze_something(Kee_data, plot_path)
-
-    Kee_data = create_vars(Kee_data)
-    cut_data = create_vars(cut_data)
-    # Kee_data.query('e_plus_ETRUE_over_pTRUE > 1.003', inplace=True)
-    # cut_data.query('e_plus_ETRUE_over_pTRUE > 1.003', inplace=True)
+    histograms = read_file(path, branches, filename, maxevts=400000)
 
     for key in hist_dict.keys():
-
-        comp_dict = {'Before cuts': Kee_data[key], f'PIDe > {PIDcut}': cut_data[key]}
+        comp_dict = {'Before cuts': histograms['full'][key], f'PIDe > {PIDcut}': histograms['cut'][key]}
         plot_hist(comp_dict, key, hist_dict=hist_dict, path=plot_path, PIDcut=PIDcut, normalize=True)
 
     # EXPERIMENTAL
-    b_zero_pl = cut_data.loc[cut_data['e_plus_BremMultiplicity'] == 0, ['e_plus_Ecal_over_p', 'e_plus_Ecal_over_pTR']]
-    b_zero_min = cut_data.loc[cut_data['e_minus_BremMultiplicity'] == 0, ['e_minus_Ecal_over_p', 'e_minus_Ecal_over_pTR']]
-    b_zero = pd.DataFrame()
-    b_zero['Ecal_over_p'] = pd.concat([b_zero_pl['e_plus_Ecal_over_p'], b_zero_min['e_minus_Ecal_over_p']])
-    b_zero['Ecal_over_pTR'] = pd.concat([b_zero_pl['e_plus_Ecal_over_pTR'], b_zero_min['e_minus_Ecal_over_pTR']])
-
-    b_one_pl = cut_data.loc[cut_data['e_plus_BremMultiplicity'] == 1, ['e_plus_Ecal_over_p', 'e_plus_Ecal_over_pTR']]
-    b_one_min = cut_data.loc[cut_data['e_minus_BremMultiplicity'] == 1, ['e_minus_Ecal_over_p', 'e_minus_Ecal_over_pTR']]
-    b_one = pd.DataFrame()
-    b_one['Ecal_over_p'] = pd.concat([b_one_pl['e_plus_Ecal_over_p'], b_one_min['e_minus_Ecal_over_p']])
-    b_one['Ecal_over_pTR'] = pd.concat([b_one_pl['e_plus_Ecal_over_pTR'], b_one_min['e_minus_Ecal_over_pTR']])
-
-    b_two_pl = cut_data.loc[cut_data['e_plus_BremMultiplicity'] > 1, ['e_plus_Ecal_over_p', 'e_plus_Ecal_over_pTR']]
-    b_two_min = cut_data.loc[cut_data['e_minus_BremMultiplicity'] > 1, ['e_minus_Ecal_over_p', 'e_minus_Ecal_over_pTR']]
-    b_two = pd.DataFrame()
-    b_two['Ecal_over_p'] = pd.concat([b_two_pl['e_plus_Ecal_over_p'], b_two_min['e_minus_Ecal_over_p']])
-    b_two['Ecal_over_pTR'] = pd.concat([b_two_pl['e_plus_Ecal_over_pTR'], b_two_min['e_minus_Ecal_over_pTR']])
-
-    plot_EoP_bremcat(b_zero['Ecal_over_p'], 'brem_zero', mode='Full', path=plot_path, PIDcut=PIDcut)
-
-    plot_EoP_bremcat(b_one['Ecal_over_pTR'], 'brem_one', mode='Track', path=plot_path, PIDcut=PIDcut)
-    plot_EoP_bremcat(b_one['Ecal_over_p'], 'brem_one', mode='Full', path=plot_path, PIDcut=PIDcut)
-    plot_EoP_bremcat(b_two['Ecal_over_pTR'], 'brem_two', mode='Track', path=plot_path, PIDcut=PIDcut)
-    plot_EoP_bremcat(b_two['Ecal_over_p'], 'brem_two', mode='Full', path=plot_path, PIDcut=PIDcut)
+    # b_zero_pl = cut_data.loc[cut_data['e_plus_BremMultiplicity'] == 0, ['e_plus_Ecal_over_p', 'e_plus_Ecal_over_pTR']]
+    # b_zero_min = cut_data.loc[cut_data['e_minus_BremMultiplicity'] == 0, ['e_minus_Ecal_over_p', 'e_minus_Ecal_over_pTR']]
+    # b_zero = pd.DataFrame()
+    # b_zero['Ecal_over_p'] = pd.concat([b_zero_pl['e_plus_Ecal_over_p'], b_zero_min['e_minus_Ecal_over_p']])
+    # b_zero['Ecal_over_pTR'] = pd.concat([b_zero_pl['e_plus_Ecal_over_pTR'], b_zero_min['e_minus_Ecal_over_pTR']])
+    #
+    # b_one_pl = cut_data.loc[cut_data['e_plus_BremMultiplicity'] == 1, ['e_plus_Ecal_over_p', 'e_plus_Ecal_over_pTR']]
+    # b_one_min = cut_data.loc[cut_data['e_minus_BremMultiplicity'] == 1, ['e_minus_Ecal_over_p', 'e_minus_Ecal_over_pTR']]
+    # b_one = pd.DataFrame()
+    # b_one['Ecal_over_p'] = pd.concat([b_one_pl['e_plus_Ecal_over_p'], b_one_min['e_minus_Ecal_over_p']])
+    # b_one['Ecal_over_pTR'] = pd.concat([b_one_pl['e_plus_Ecal_over_pTR'], b_one_min['e_minus_Ecal_over_pTR']])
+    #
+    # b_two_pl = cut_data.loc[cut_data['e_plus_BremMultiplicity'] > 1, ['e_plus_Ecal_over_p', 'e_plus_Ecal_over_pTR']]
+    # b_two_min = cut_data.loc[cut_data['e_minus_BremMultiplicity'] > 1, ['e_minus_Ecal_over_p', 'e_minus_Ecal_over_pTR']]
+    # b_two = pd.DataFrame()
+    # b_two['Ecal_over_p'] = pd.concat([b_two_pl['e_plus_Ecal_over_p'], b_two_min['e_minus_Ecal_over_p']])
+    # b_two['Ecal_over_pTR'] = pd.concat([b_two_pl['e_plus_Ecal_over_pTR'], b_two_min['e_minus_Ecal_over_pTR']])
+    #
+    # plot_EoP_bremcat(b_zero['Ecal_over_p'], 'brem_zero', mode='Full', path=plot_path, PIDcut=PIDcut)
+    #
+    # plot_EoP_bremcat(b_one['Ecal_over_pTR'], 'brem_one', mode='Track', path=plot_path, PIDcut=PIDcut)
+    # plot_EoP_bremcat(b_one['Ecal_over_p'], 'brem_one', mode='Full', path=plot_path, PIDcut=PIDcut)
+    # plot_EoP_bremcat(b_two['Ecal_over_pTR'], 'brem_two', mode='Track', path=plot_path, PIDcut=PIDcut)
+    # plot_EoP_bremcat(b_two['Ecal_over_p'], 'brem_two', mode='Full', path=plot_path, PIDcut=PIDcut)
 
     #    if 'brem' not in key:
     #        comp_dict = {'Before cuts': Kee_data[key], f'PIDe > {PIDcut}': cut_data[key]}
@@ -414,13 +454,6 @@ if __name__ == '__main__':
             
     # fit_e_over_p(cut_data['e_plus_Efull_over_p'])
 
-    # NEW STUFF
-    # CREATING VARIABLES
-
-    # kaon_cut = 'K_Kst_PIDe > 3 and abs(K_Kst_TRUEID) == 321'
-    # electron_cut = 'e_plus_PIDe < 0 and e_plus_PIDK > 3'
-    # Kee_data.query(f'({kaon_cut}) and ({electron_cut})', inplace=True)
-    # print(f'NUMBER OF EVENTS AFTER K-e PID CUTS: {len(Kee_data.index)}')
 
     # 2 electrons from JPsi (e trueid, e mc mother id, don't forget abs
     # change one electrons energy so that it has a mass hypothesis of a proton
