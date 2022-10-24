@@ -89,7 +89,7 @@ def create_vars(data):
     return data
 
 
-def read_file(path, branches, filename, maxevts=400000):
+def read_file(path, branches, filename, maxevts=400000, PIDcut=3):
     if 'Kee' in filename:
         prefix = 'Kee'
     elif 'KJPsiee' in filename:
@@ -126,7 +126,7 @@ def read_file(path, branches, filename, maxevts=400000):
         for key in hist_dict.keys():
             full_histos_md[key] = make_hist(df[key], key, hist_dict=hist_dict, hist=full_histos_md[key])
 
-        df = common_cuts(df, filename, PIDcut=3)
+        df = common_cuts(df, filename, PIDcut=PIDcut)
         for key in hist_dict.keys():
             cut_histos_md[key] = make_hist(df[key], key, hist_dict=hist_dict, hist=cut_histos_md[key])
         brem_frames = setup_brem_hists(df)
@@ -169,7 +169,7 @@ def read_file(path, branches, filename, maxevts=400000):
             full_histos_mu[key] = make_hist(df[key], key, hist_dict=hist_dict, hist=full_histos_mu[key])
         full_num_events = full_num_events + len(df.index)
 
-        df = common_cuts(df, filename, PIDcut=3)
+        df = common_cuts(df, filename, PIDcut=PIDcut)
         for key in hist_dict.keys():
             cut_histos_mu[key] = make_hist(df[key], key, hist_dict=hist_dict, hist=cut_histos_mu[key])
         brem_frames = setup_brem_hists(df)
@@ -470,7 +470,7 @@ if __name__ == '__main__':
 
     PIDcut = 3
 
-    histograms = read_file(path, branches, filename, maxevts=400000)
+    histograms = read_file(path, branches, filename, maxevts=400000, PIDcut=PIDcut)
 
     for key in hist_dict.keys():
         comp_dict = {'Before cuts': histograms['full'][key], f'PIDe > {PIDcut}': histograms['cut'][key]}
