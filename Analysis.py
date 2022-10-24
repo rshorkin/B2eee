@@ -11,7 +11,7 @@ import zfit
 from zfit import z
 from pathlib import Path
 
-from service import hist_dict
+from service import hist_dict, hist2d_dict
 
 
 def create_vars(data):
@@ -123,10 +123,13 @@ def read_file(path, branches, filename, maxevts=400000, PIDcut=3):
         df = create_vars(df)
         df = divide_brem_cats(df)
 
+        df = common_cuts(df, filename)
+        df = mass_cuts(df, filename)
         for key in hist_dict.keys():
             full_histos_md[key] = make_hist(df[key], key, hist_dict=hist_dict, hist=full_histos_md[key])
 
-        df = common_cuts(df, filename, PIDcut=PIDcut)
+        df = misid_cuts(df, filename, PIDcut=PIDcut)
+
         for key in hist_dict.keys():
             cut_histos_md[key] = make_hist(df[key], key, hist_dict=hist_dict, hist=cut_histos_md[key])
         brem_frames = setup_brem_hists(df)
@@ -165,11 +168,15 @@ def read_file(path, branches, filename, maxevts=400000, PIDcut=3):
         print(f'Currently at {mu_progress} / {tot_num} events...')  # to implement progress bar
         df = create_vars(df)
         df = divide_brem_cats(df)
+
+        df = common_cuts(df, filename)
+        df = mass_cuts(df, filename)
         for key in hist_dict.keys():
             full_histos_mu[key] = make_hist(df[key], key, hist_dict=hist_dict, hist=full_histos_mu[key])
         full_num_events = full_num_events + len(df.index)
+        df = misid_cuts(df, filename, PIDcut=PIDcut)
 
-        df = common_cuts(df, filename, PIDcut=PIDcut)
+
         for key in hist_dict.keys():
             cut_histos_mu[key] = make_hist(df[key], key, hist_dict=hist_dict, hist=cut_histos_mu[key])
         brem_frames = setup_brem_hists(df)
@@ -211,7 +218,7 @@ def read_file(path, branches, filename, maxevts=400000, PIDcut=3):
     return {'full': full_histos, 'cut': cut_histos}
 
 
-def common_cuts(data_df, filename, PIDcut=3):
+def common_cuts(data_df, filename):
     # ELECTRON TRUTH-MATCHING
     # if 'Kee' in filename:
     # ele_cuts = 'abs(e_minus_TRUEID) == 11 and abs(e_plus_TRUEID) == 11'# \
@@ -222,14 +229,18 @@ def common_cuts(data_df, filename, PIDcut=3):
                    'abs(e_plus_MC_MOTHER_ID) == 443 and abs(e_minus_MC_MOTHER_ID) == 443 and ' \
                    'abs(e_plus_MC_GD_MOTHER_ID) == 521 and abs(e_minus_MC_GD_MOTHER_ID) == 521 and ' \
                    'abs(K_Kst_TRUEID) == 321 and abs(K_Kst_MC_MOTHER_ID) == 521 and B_plus_BKGCAT == 0'
+    data_df.query(f'{ele_cuts}', inplace=True)
+    return data_df
+
+def mass_cuts(data_df, filename):
+
+    if 'KJPsiee' in filename:
         JPsi_presel = '(J_psi_1S_M/1000.) ** 2 > 6 and (J_psi_1S_M/1000.) ** 2 < 12.96'
         B_plus_M_cut = 'B_plus_DTFM_M > 5200 and B_plus_DTFM_M < 5680'
-    data_df.query(f'{ele_cuts}', inplace=True)
-    # print(f'***\nAPPLYING TRUTHMATCHING CUTS. EVENTS REMAINING: {len(data_df.index)}')
+        data_df.query(f'{JPsi_presel} and {B_plus_M_cut}', inplace=True)
+    return data_df
 
-    data_df.query(f'{JPsi_presel} and {B_plus_M_cut}', inplace=True)
-    # print(f'***\nAPPLYING PHYSICAL CUTS. EVENTS REMAINING: {len(data_df.index)}')
-
+def misid_cuts(data_df, filename, PIDcut=3):
     # KAON-ELECTRON MIS-ID
 
     PIDcut_K = PIDcut
@@ -308,6 +319,22 @@ def make_hist(x, title, hist_dict, hist=None):
     else:
         return data_x
 
+def make_hist2d(x, y, title, hist2d_dict, hist=None):
+    xbins = int(hist2d_dict[title]['x_bins'])
+    xmin = hist2d_dict[title]['xmin']
+    xmax = hist2d_dict[title]['xmax']
+    ybins = int(hist2d_dict[title]['y_bins'])
+    ymin = hist2d_dict[title]['ymin']
+    ymax = hist2d_dict[title]['ymax']
+    xbin_width = (xmax - xmin) / xbins
+    bins_x = [xmin + x * xbin_width for x in range(xbins + 1)]
+    ybin_width = (ymax - ymin) / ybins
+    bins_y = [ymin + x * ybin_width for x in range(ybins + 1)]
+    data, x_edges, y_edges = np.histogram2d(x.values, y.values, bins = (bins_x, bins_y))
+    if hist is not None:
+        return np.add(hist, data)
+    else:
+        return data
 
 def plot_hist(x, title, hist_dict, path='', PIDcut=3, normalize=False):
     plt.clf()
@@ -432,7 +459,7 @@ def fit_e_over_p(data, ini_params=None):
 if __name__ == '__main__':
     path = ''
     filename = 'KJPsiee'
-    plot_path = 'Plots/' + str(filename) + '_testing'
+    plot_path = 'Plots/' + str(filename) + '_truthmatched_masscut_K'
     if not os.path.exists(plot_path):
         os.makedirs(plot_path)
 
@@ -470,7 +497,7 @@ if __name__ == '__main__':
 
     PIDcut = 3
 
-    histograms = read_file(path, branches, filename, maxevts=400000, PIDcut=PIDcut)
+    histograms = read_file(path, branches, filename, maxevts=2000000, PIDcut=PIDcut)
 
     for key in hist_dict.keys():
         comp_dict = {'Before cuts': histograms['full'][key], f'PIDe > {PIDcut}': histograms['cut'][key]}

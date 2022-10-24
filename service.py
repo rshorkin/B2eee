@@ -121,11 +121,27 @@ hist_dict = {
             'xmax': 1.025,
             'xlabel': r'True Energy / True Momentum'
         },
+    'J_psi_1S_M':
+        {
+            'n_bins': 50.,
+            'plt_title': r'B$^+$ mass',
+            'xmin': 3000.,
+            'xmax': 3200.,
+            'xlabel': r'M(B$^+$), MeV'
+        },
     'B_plus_M':
         {
-            'n_bins': 60.,
+            'n_bins': 50.,
             'plt_title': r'B$^+$ mass',
-            'xmin': 4600.,
+            'xmin': 4400.,
+            'xmax': 6000.,
+            'xlabel': r'M(B$^+$), MeV'
+        },
+    'B_plus_DTFM_M':
+        {
+            'n_bins': 80.,
+            'plt_title': r'B$^+$ mass',
+            'xmin': 5000.,
             'xmax': 5800.,
             'xlabel': r'M(B$^+$), MeV'
         },
@@ -324,4 +340,18 @@ hist_dict = {
         },
 
 
+}
+
+hist2d_dict = {
+    'smth':
+        {
+            'plt_title': r'smth',
+            'x_bins': 60,
+            'xmin': -1.,
+            'xmax': 2.,
+            'y_bins': 60,
+            'ymin': -1.,
+            'ymax': 2.,
+            'xlabel': r'ECAL Energy / Track Momentum'
+        },
 }
