@@ -122,12 +122,31 @@ def read_file(path, branches, filename, maxevts=400000):
         print(f'Currently at {full_num_events} / {tot_num} events...')   # to implement progress bar
         df = create_vars(df)
         df = divide_brem_cats(df)
+
         for key in hist_dict.keys():
             full_histos_md[key] = make_hist(df[key], key, hist_dict=hist_dict, hist=full_histos_md[key])
 
         df = common_cuts(df, filename, PIDcut=3)
         for key in hist_dict.keys():
             cut_histos_md[key] = make_hist(df[key], key, hist_dict=hist_dict, hist=cut_histos_md[key])
+        brem_frames = setup_brem_hists(df)
+        for brem_cat in range(3):
+            if brem_cat != 0:
+                for mode in ('p', 'pTR'):
+                    if f'EoP_{mode}_{brem_cat}' in cut_histos_md.keys():
+                        cut_histos_md[f'EoP_{mode}_{brem_cat}'] = make_brem_hist(brem_frames[str(brem_cat)][f'Ecal_over_{mode}'],
+                                                                                 hist=cut_histos_md[f'EoP_{mode}_{brem_cat}'])
+                    else:
+                        cut_histos_md[f'EoP_{mode}_{brem_cat}'] = make_brem_hist(brem_frames[str(brem_cat)][f'Ecal_over_{mode}'])
+            else:
+                mode = 'pTR'
+                if f'EoP_{mode}_{brem_cat}' in cut_histos_md.keys():
+                    cut_histos_md[f'EoP_{mode}_{brem_cat}'] = make_brem_hist(
+                        brem_frames[str(brem_cat)][f'Ecal_over_{mode}'],
+                        hist=cut_histos_md[f'EoP_{mode}_{brem_cat}'])
+                else:
+                    cut_histos_md[f'EoP_{mode}_{brem_cat}'] = make_brem_hist(
+                        brem_frames[str(brem_cat)][f'Ecal_over_{mode}'])
         cut_num_events = cut_num_events + len(df.index)
         del df
         gc.collect()
@@ -153,12 +172,33 @@ def read_file(path, branches, filename, maxevts=400000):
         df = common_cuts(df, filename, PIDcut=3)
         for key in hist_dict.keys():
             cut_histos_mu[key] = make_hist(df[key], key, hist_dict=hist_dict, hist=cut_histos_mu[key])
+        brem_frames = setup_brem_hists(df)
+        for brem_cat in range(3):
+            if brem_cat != 0:
+                for mode in ('p', 'pTR'):
+                    if f'EoP_{mode}_{brem_cat}' in cut_histos_mu.keys():
+                        cut_histos_mu[f'EoP_{mode}_{brem_cat}'] = make_brem_hist(
+                            brem_frames[str(brem_cat)][f'Ecal_over_{mode}'],
+                            hist=cut_histos_mu[f'EoP_{mode}_{brem_cat}'])
+                    else:
+                        cut_histos_mu[f'EoP_{mode}_{brem_cat}'] = make_brem_hist(
+                            brem_frames[str(brem_cat)][f'Ecal_over_{mode}'])
+            else:
+                mode = 'pTR'
+                if f'EoP_{mode}_{brem_cat}' in cut_histos_mu.keys():
+                    cut_histos_mu[f'EoP_{mode}_{brem_cat}'] = make_brem_hist(
+                        brem_frames[str(brem_cat)][f'Ecal_over_{mode}'],
+                        hist=cut_histos_mu[f'EoP_{mode}_{brem_cat}'])
+                else:
+                    cut_histos_mu[f'EoP_{mode}_{brem_cat}'] = make_brem_hist(
+                        brem_frames[str(brem_cat)][f'Ecal_over_{mode}'])
+
         cut_num_events = cut_num_events + len(df.index)
         del df
         gc.collect()
 
-    full_histos = {key: None for key in hist_dict.keys()}
-    cut_histos = {key: None for key in hist_dict.keys()}
+    full_histos = {key: None for key in full_histos_md.keys()}
+    cut_histos = {key: None for key in cut_histos_md.keys()}
 
     for key in full_histos.keys():
         full_histos[key] = np.add(full_histos_mu[key], full_histos_md[key])
@@ -189,19 +229,6 @@ def common_cuts(data_df, filename, PIDcut=3):
 
     data_df.query(f'{JPsi_presel} and {B_plus_M_cut}', inplace=True)
     # print(f'***\nAPPLYING PHYSICAL CUTS. EVENTS REMAINING: {len(data_df.index)}')
-    # ===========================================================
-    # KJPsiee sample
-    # Truthmatching сuts
-    # ID match + B_plus_BKGCAT == 0: 111 454 / 400 000
-    # ID match: 143 415 / 400 000
-    # B_plus_BKGCAT: 111 793 / 400 000
-    #
-    # ID match + J_psi_1S_BKGCAT: 112 963 / 400 000
-    # J_psi_1S_BKGCAT: 133 337 / 400 000
-    #
-    # ID match + B_plus_BKGCAT + J_psi_1S_BKGCAT: 111 454 / 400 000
-    # B_plus_BKGCAT + J_psi_1S_BKGCAT: 111 793 / 400 000
-    # ===========================================================
 
     # KAON-ELECTRON MIS-ID
 
@@ -232,6 +259,18 @@ def divide_brem_cats(data):
 
     data['brem_tag'] = np.select(conditions, brem_cats, default=0)
     return data
+
+
+def setup_brem_hists(df):
+    frames = {}
+    pl_min = [None, None]
+    for i in range(3):
+        pl_min[0] = df.loc[df['e_plus_BremMultiplicity'] == i, ['e_plus_Ecal_over_p', 'e_plus_Ecal_over_pTR']]
+        pl_min[1] = df.loc[df['e_minus_BremMultiplicity'] == i, ['e_minus_Ecal_over_p', 'e_minus_Ecal_over_pTR']]
+        frames[str(i)] = pd.DataFrame()
+        frames[str(i)]['Ecal_over_p'] = pd.concat([pl_min[0]['e_plus_Ecal_over_p'], pl_min[1]['e_minus_Ecal_over_p']])
+        frames[str(i)]['Ecal_over_pTR'] = pd.concat([pl_min[0]['e_plus_Ecal_over_pTR'], pl_min[1]['e_minus_Ecal_over_pTR']])
+    return frames
 
 
 def calc_e_from_p(momentum):
@@ -301,6 +340,19 @@ def plot_hist(x, title, hist_dict, path='', PIDcut=3, normalize=False):
     plt.savefig(path + '/' + path_stem)
 
 
+def make_brem_hist(x, hist=None):
+    nbins = 50
+    xmin = -0.5
+    xmax = 1.5
+    bin_width = (xmax - xmin) / nbins
+    bins = [xmin + x * bin_width for x in range(nbins + 1)]
+    data_x, _ = np.histogram(x.values, bins=bins)
+    if hist is not None:
+        return np.add(hist, data_x)
+    else:
+        return data_x
+
+
 def plot_EoP_bremcat(x, brem_cat, ele='e_plus', mode='Full', path='', PIDcut=3):
     plt.clf()
 
@@ -310,11 +362,13 @@ def plot_EoP_bremcat(x, brem_cat, ele='e_plus', mode='Full', path='', PIDcut=3):
     xlabel = f'Energy / {mode} Momentum, A.U.'
     xmin = -0.5
     xmax = 1.5
-    plt.hist(x, range=(xmin, xmax), bins=nbins)
+    bin_width = (xmax - xmin) / nbins
+    bins = [xmin + x * bin_width for x in range(nbins)]
+    plt.bar(height=x, width=bin_width, x=bins, align='edge')
     plt.ylabel(f'Events / {(xmax - xmin) / nbins}')
     plt.xlabel(xlabel)
     plt.title(plt_title)
-    path_stem = f'{ele}_EoP_{mode}_{brem_cat}.png'
+    path_stem = f'EoP_{mode}_{brem_cat}.jpg'
     plt.savefig(path + '/' + path_stem)
 
 
@@ -422,35 +476,14 @@ if __name__ == '__main__':
         comp_dict = {'Before cuts': histograms['full'][key], f'PIDe > {PIDcut}': histograms['cut'][key]}
         plot_hist(comp_dict, key, hist_dict=hist_dict, path=plot_path, PIDcut=PIDcut, normalize=True)
 
-    # EXPERIMENTAL
-    # b_zero_pl = cut_data.loc[cut_data['e_plus_BremMultiplicity'] == 0, ['e_plus_Ecal_over_p', 'e_plus_Ecal_over_pTR']]
-    # b_zero_min = cut_data.loc[cut_data['e_minus_BremMultiplicity'] == 0, ['e_minus_Ecal_over_p', 'e_minus_Ecal_over_pTR']]
-    # b_zero = pd.DataFrame()
-    # b_zero['Ecal_over_p'] = pd.concat([b_zero_pl['e_plus_Ecal_over_p'], b_zero_min['e_minus_Ecal_over_p']])
-    # b_zero['Ecal_over_pTR'] = pd.concat([b_zero_pl['e_plus_Ecal_over_pTR'], b_zero_min['e_minus_Ecal_over_pTR']])
-    #
-    # b_one_pl = cut_data.loc[cut_data['e_plus_BremMultiplicity'] == 1, ['e_plus_Ecal_over_p', 'e_plus_Ecal_over_pTR']]
-    # b_one_min = cut_data.loc[cut_data['e_minus_BremMultiplicity'] == 1, ['e_minus_Ecal_over_p', 'e_minus_Ecal_over_pTR']]
-    # b_one = pd.DataFrame()
-    # b_one['Ecal_over_p'] = pd.concat([b_one_pl['e_plus_Ecal_over_p'], b_one_min['e_minus_Ecal_over_p']])
-    # b_one['Ecal_over_pTR'] = pd.concat([b_one_pl['e_plus_Ecal_over_pTR'], b_one_min['e_minus_Ecal_over_pTR']])
-    #
-    # b_two_pl = cut_data.loc[cut_data['e_plus_BremMultiplicity'] > 1, ['e_plus_Ecal_over_p', 'e_plus_Ecal_over_pTR']]
-    # b_two_min = cut_data.loc[cut_data['e_minus_BremMultiplicity'] > 1, ['e_minus_Ecal_over_p', 'e_minus_Ecal_over_pTR']]
-    # b_two = pd.DataFrame()
-    # b_two['Ecal_over_p'] = pd.concat([b_two_pl['e_plus_Ecal_over_p'], b_two_min['e_minus_Ecal_over_p']])
-    # b_two['Ecal_over_pTR'] = pd.concat([b_two_pl['e_plus_Ecal_over_pTR'], b_two_min['e_minus_Ecal_over_pTR']])
-    #
-    # plot_EoP_bremcat(b_zero['Ecal_over_p'], 'brem_zero', mode='Full', path=plot_path, PIDcut=PIDcut)
-    #
-    # plot_EoP_bremcat(b_one['Ecal_over_pTR'], 'brem_one', mode='Track', path=plot_path, PIDcut=PIDcut)
-    # plot_EoP_bremcat(b_one['Ecal_over_p'], 'brem_one', mode='Full', path=plot_path, PIDcut=PIDcut)
-    # plot_EoP_bremcat(b_two['Ecal_over_pTR'], 'brem_two', mode='Track', path=plot_path, PIDcut=PIDcut)
-    # plot_EoP_bremcat(b_two['Ecal_over_p'], 'brem_two', mode='Full', path=plot_path, PIDcut=PIDcut)
+    for brem_cat in range(3):
+        if brem_cat != 0:
+            for mode in ('p', 'pTR'):
+                plot_EoP_bremcat(histograms['cut'][f'EoP_{mode}_{brem_cat}'], brem_cat=brem_cat, mode=mode, path=plot_path)
+            else:
+                mode = 'pTR'
+                plot_EoP_bremcat(histograms['cut'][f'EoP_{mode}_{brem_cat}'], brem_cat=brem_cat, mode='pTR', path=plot_path)
 
-    #    if 'brem' not in key:
-    #        comp_dict = {'Before cuts': Kee_data[key], f'PIDe > {PIDcut}': cut_data[key]}
-    #        plot_hist(comp_dict, key, hist_dict=hist_dict, path=plot_path, PIDcut=PIDcut)
             
     # fit_e_over_p(cut_data['e_plus_Efull_over_p'])
 
