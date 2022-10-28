@@ -343,15 +343,80 @@ hist_dict = {
 }
 
 hist2d_dict = {
-    'smth':
+    # SAMPLE ENTRY:
+    # 'smth':
+    #     {
+    #         'plt_title': r'smth',
+    #
+    #         'x_bins': 60,
+    #         'xmin': -1.,
+    #         'xmax': 2.,
+    #         'xvar': '1st_variable',
+    #
+    #         'y_bins': 60,
+    #         'ymin': -1.,
+    #         'ymax': 2.,
+    #         'yvar': '2nd_variable',
+    #
+    #         'cmin': -1.,
+    #         'cmax': 2.,
+    #
+    #         'xlabel': r'ECAL Energy / Track Momentum',
+    #         'ylabel': r'ECAL Energy / Track Momentum',
+    #         'clabel': r'Events'
+    #     },
+    'DLLe_vs_EoP':
         {
-            'plt_title': r'smth',
-            'x_bins': 60,
-            'xmin': -1.,
-            'xmax': 2.,
+            'plt_title': r'e^+ DLLe vs EoM ration',
+
+            'x_bins': 40,
+            'xmin': -4.,
+            'xmax': 8.,
+            'xvar': 'e_plus_EcalPIDe',
+
             'y_bins': 60,
             'ymin': -1.,
             'ymax': 2.,
-            'xlabel': r'ECAL Energy / Track Momentum'
+            'yvar': 'e_plus_Ecal_over_pTR',
+
+            'cmin': 0.,
+            'cmax': 100.,
+            'cscale': 'log',
+
+            'xlabel': r'e_plus_EcalPIDe',
+            'ylabel': r'ECAL Energy / Track Momentum',
+            'clabel': r'Events'
         },
+
+
 }
+
+branches = ['nTracks', 'nSPDHits',
+            'e_minus_TRUEID', 'e_minus_MC_MOTHER_ID', 'e_minus_MC_GD_MOTHER_ID',
+            'e_plus_TRUEID', 'e_plus_MC_MOTHER_ID', 'e_plus_MC_GD_MOTHER_ID',
+            'e_plus_BremMultiplicity', 'e_minus_BremMultiplicity',
+            'K_Kst_PIDe', 'K_Kst_PIDK', 'e_plus_PIDe', 'e_plus_PIDK',
+            'K_Kst_TRUEID', 'K_Kst_MC_MOTHER_ID', 'J_psi_1S_BKGCAT', 'B_plus_BKGCAT',
+            'K_Kst_CaloEcalE', 'K_Kst_CaloHcalE', 'K_Kst_CaloSpdE', 'K_Kst_CaloPrsE',
+            'e_plus_CaloEcalE', 'e_plus_CaloHcalE', 'e_plus_CaloSpdE', 'e_plus_CaloPrsE',
+            'e_minus_CaloEcalE', 'e_minus_CaloHcalE', 'e_minus_CaloSpdE', 'e_minus_CaloPrsE',
+            'K_Kst_P', 'K_Kst_PT', 'K_Kst_PE', 'K_Kst_TRACK_P',
+            'e_plus_P', 'e_plus_PT', 'e_plus_PE', 'e_plus_TRACK_P',
+            'e_minus_P', 'e_minus_TRACK_P',
+            'e_plus_PX', 'e_plus_PY', 'e_plus_PZ',
+            'e_minus_PT', 'e_minus_PE',
+            'e_minus_PX', 'e_minus_PY', 'e_minus_PZ',
+            'e_plus_TRUEP_E', 'e_minus_TRUEP_E', 'K_Kst_TRUEP_E',
+            'e_plus_TRUEP_X', 'e_minus_TRUEP_X', 'K_Kst_TRUEP_X',
+            'e_plus_TRUEP_Y', 'e_minus_TRUEP_Y', 'K_Kst_TRUEP_Y',
+            'e_plus_TRUEP_Z', 'e_minus_TRUEP_Z', 'K_Kst_TRUEP_Z',
+            'e_minus_PIDe',
+            'e_plus_L0Calo_ECAL_xProjection', 'e_minus_L0Calo_ECAL_xProjection', 'K_Kst_L0Calo_HCAL_xProjection',
+            'e_plus_L0Calo_ECAL_yProjection', 'e_minus_L0Calo_ECAL_yProjection', 'K_Kst_L0Calo_HCAL_yProjection',
+            'J_psi_1S_M',
+            'B_plus_M', 'B_plus_DTFM_M',
+            'e_plus_RichDLLe', 'K_Kst_RichDLLe', 'e_minus_RichDLLe',
+            'e_plus_EcalPIDe', 'e_minus_EcalPIDe', 'K_Kst_EcalPIDe',
+            'e_plus_HcalPIDe', 'e_minus_HcalPIDe', 'K_Kst_HcalPIDe',
+            'e_plus_BremPIDe', 'e_minus_BremPIDe', 'K_Kst_BremPIDe',
+            'e_plus_L0Calo_ECAL_region', 'e_minus_L0Calo_ECAL_region', 'K_Kst_L0Calo_HCAL_region']
