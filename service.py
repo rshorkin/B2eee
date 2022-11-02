@@ -9,18 +9,18 @@ hist_dict = {
         },
     'e_plus_ETRUE_over_pTR':
         {
-            'n_bins': 40,
+            'n_bins': 50,
             'plt_title': r'E/p ratio for e$^+$',
-            'xmin': -0.,
-            'xmax': 2.,
+            'xmin': 0.5,
+            'xmax': 2.0,
             'xlabel': r'True Energy / Track Momentum'
         },
     'e_plus_ETRUE_over_p':
         {
             'n_bins': 40,
             'plt_title': r'E/p ratio for e$^+$',
-            'xmin': -0.,
-            'xmax': 2.,
+            'xmin': 0.5,
+            'xmax': 1.5,
             'xlabel': r'True Energy / Full Momentum'
         },
     'e_plus_ETRUE_over_pTRUE':
@@ -79,7 +79,7 @@ hist_dict = {
             'plt_title': r'E/p ratio for K$^+$',
             'xmin': -1.,
             'xmax': 2.,
-            'xlabel': r'ECAL Energy / Track Momentum'
+            'xlabel': r'Total Energy / Full Momentum'
         },
     'K_Ecal_over_p':
         {
@@ -101,16 +101,16 @@ hist_dict = {
         {
             'n_bins': 40,
             'plt_title': r'E/p ratio for K$^+$',
-            'xmin': -0.,
-            'xmax': 2.,
+            'xmin': 0.9,
+            'xmax': 1.1,
             'xlabel': r'True Energy / Track Momentum'
         },
     'K_Kst_ETRUE_over_p':
         {
             'n_bins': 40,
             'plt_title': r'E/p ratio for K$^+$',
-            'xmin': -0.,
-            'xmax': 2.,
+            'xmin': 0.9,
+            'xmax': 1.1,
             'xlabel': r'True Energy / Full Momentum'
         },
     'K_Kst_ETRUE_over_pTRUE':
@@ -221,25 +221,33 @@ hist_dict = {
         {
             'n_bins': 80.,
             'plt_title': r'e$^+$ RICH DLLe',
-            'xmin': -8.,
-            'xmax': 8.,
+            'xmin': -20.,
+            'xmax': 140.,
             'xlabel': r'e_plus_RichDLLe'
         },
     'e_minus_RichDLLe':
         {
             'n_bins': 80.,
             'plt_title': r'e$^+$ RICH DLLe',
-            'xmin': -8.,
-            'xmax': 8.,
+            'xmin': -20.,
+            'xmax': 140.,
             'xlabel': r'e_plus_RichDLLe'
         },
     'K_Kst_RichDLLe':
         {
             'n_bins': 80.,
             'plt_title': r'K$^+$ RICH DLLe',
-            'xmin': -8.,
-            'xmax': 8.,
+            'xmin': -20.,
+            'xmax': 20.,
             'xlabel': r'K_Kst_RichDLLe'
+        },
+    'K_Kst_RichDLLk':
+        {
+            'n_bins': 80.,
+            'plt_title': r'K$^+$ RICH DLLk',
+            'xmin': -20.,
+            'xmax': 140.,
+            'xlabel': r'K_Kst_RichDLLk'
         },
     ##################################
     'e_plus_EcalPIDe':
@@ -338,6 +346,38 @@ hist_dict = {
             'xmax': 3.,
             'xlabel': r'K_Kst_L0Calo_HCAL_region'
         },
+    'K_Kst_UsedRich1Gas':
+        {
+            'n_bins': 2.,
+            'plt_title': r'K$^+$ Rich 1 Gas',
+            'xmin': 0.,
+            'xmax': 2.,
+            'xlabel': r'K_Kst_UsedRich1Gas'
+        },
+    'K_Kst_UsedRich2Gas':
+        {
+            'n_bins': 2.,
+            'plt_title': r'K$^+$ Rich2 gas',
+            'xmin': 0.,
+            'xmax': 2.,
+            'xlabel': r'K_Kst_UsedRich2Gas'
+        },
+    'K_Kst_ProbNNe':
+        {
+            'n_bins': 40.,
+            'plt_title': r'K$^+$ ProbNNe',
+            'xmin': 0.,
+            'xmax': 0.4,
+            'xlabel': r'K_Kst_ProbNNe'
+        },
+    'K_Kst_ProbNNk':
+        {
+            'n_bins': 40.,
+            'plt_title': r'K$^+$ ProbNNk',
+            'xmin': 0.,
+            'xmax': 1.,
+            'xlabel': r'K_Kst_ProbNNk'
+        },
 
 
 }
@@ -365,14 +405,14 @@ hist2d_dict = {
     #         'ylabel': r'ECAL Energy / Track Momentum',
     #         'clabel': r'Events'
     #     },
-    'DLLe_vs_EoP':
+    'PIDe_vs_EoP_e':
         {
-            'plt_title': r'e^+ DLLe vs EoM ration',
+            'plt_title': r'$e^+$ PIDe vs EoP ratio',
 
             'x_bins': 40,
-            'xmin': -4.,
-            'xmax': 8.,
-            'xvar': 'e_plus_EcalPIDe',
+            'xmin': -6.,
+            'xmax': 10.,
+            'xvar': 'e_plus_PIDe',
 
             'y_bins': 60,
             'ymin': -1.,
@@ -388,6 +428,165 @@ hist2d_dict = {
             'clabel': r'Events'
         },
 
+    'PIDe_vs_EoP_K':
+        {
+            'plt_title': r'$K^+$ PIDe vs EoP ratio',
+
+            'x_bins': 40,
+            'xmin': -10.,
+            'xmax': 10.,
+            'xvar': 'K_Kst_PIDe',
+
+            'y_bins': 60,
+            'ymin': -1.,
+            'ymax': 2.,
+            'yvar': 'K_Ecal_over_pTR',
+
+            'cmin': 0.,
+            'cmax': 100.,
+            'cscale': 'log',
+
+            'xlabel': r'$K^+$ PIDe',
+            'ylabel': r'ECAL Energy / Track Momentum',
+            'clabel': r'Events'
+        },
+
+    'PIDe_vs_y_projection':
+        {
+            'plt_title': r'$K^+$ PIDe vs HCAL y projection',
+
+            'x_bins': 40,
+            'xmin': -10.,
+            'xmax': 10.,
+            'xvar': 'K_Kst_PIDe',
+
+            'y_bins': 80.,
+            'ymin': -4000.,
+            'ymax': 4000.,
+            'yvar': 'K_Kst_L0Calo_HCAL_yProjection',
+
+            'cmin': 0.,
+            'cmax': 100.,
+            'cscale': 'log',
+
+            'xlabel': r'$K^+$ PIDe',
+            'ylabel': r'HCAL y projection',
+            'clabel': r'Events'
+        },
+
+    'RichDLLe_vs_y_projection':
+        {
+            'plt_title': r'$K^+$ RichDLLe vs HCAL y projection',
+
+            'x_bins': 80.,
+            'xmin': -20.,
+            'xmax': 20.,
+            'xvar': 'K_Kst_RichDLLe',
+
+            'y_bins': 80.,
+            'ymin': -4000.,
+            'ymax': 4000.,
+            'yvar': 'K_Kst_L0Calo_HCAL_yProjection',
+
+            'cmin': 0.,
+            'cmax': 100.,
+            'cscale': 'log',
+
+            'xlabel': r'RichDLLe',
+            'ylabel': r'HCAL y projection',
+            'clabel': r'Events'
+        },
+    'RichDLLk_vs_y_projection':
+        {
+            'plt_title': r'$K^+$ RichDLLk vs HCAL y projection',
+
+            'x_bins': 80.,
+            'xmin': -20.,
+            'xmax': 140.,
+            'xvar': 'K_Kst_RichDLLk',
+
+            'y_bins': 80.,
+            'ymin': -4000.,
+            'ymax': 4000.,
+            'yvar': 'K_Kst_L0Calo_HCAL_yProjection',
+
+            'cmin': 0.,
+            'cmax': 100.,
+            'cscale': 'log',
+
+            'xlabel': r'RichDLLk',
+            'ylabel': r'HCAL y projection',
+            'clabel': r'Events'
+        },
+
+    'PIDe_vs_ProbNNe':
+        {
+            'plt_title': r'$K^+$ PIDe vs ProbNNe',
+
+            'x_bins': 40,
+            'xmin': -10.,
+            'xmax': 10.,
+            'xvar': 'K_Kst_PIDe',
+
+            'y_bins': 40,
+            'ymin': 0.,
+            'ymax': 1.,
+            'yvar': 'K_Kst_ProbNNe',
+
+            'cmin': 0.,
+            'cmax': 100.,
+            'cscale': 'log',
+
+            'xlabel': r'$K^+$ PIDe',
+            'ylabel': r'$K^+$ ProbNNe',
+            'clabel': r'Events'
+        },
+    'x_projection_vs_y_projection':
+        {
+            'plt_title': r'$K^+$ HCAL x vs y projection',
+
+            'x_bins': 80.,
+            'xmin': -4000.,
+            'xmax': 4000.,
+            'xvar': 'K_Kst_L0Calo_HCAL_xProjection',
+
+            'y_bins': 80.,
+            'ymin': -4000.,
+            'ymax': 4000.,
+            'yvar': 'K_Kst_L0Calo_HCAL_yProjection',
+
+            'cmin': 0.,
+            'cmax': 100.,
+            'cscale': 'log',
+
+            'xlabel': r'HCAL x projection',
+            'ylabel': r'HCAL y projection',
+            'clabel': r'Events'
+        },
+    'RichDLLe_vs_PIDe':
+        {
+            'plt_title': r'$K^+$ RichDLLe vs PIDe',
+
+            'x_bins': 80.,
+            'xmin': -20.,
+            'xmax': 20.,
+            'xvar': 'K_Kst_RichDLLe',
+
+            'y_bins': 40,
+            'ymin': -14.,
+            'ymax': 10.,
+            'yvar': 'K_Kst_PIDe',
+
+            'cmin': 0.,
+            'cmax': 100.,
+            'cscale': 'log',
+
+            'xlabel': r'RichDLLe',
+            'ylabel': r'PIDe',
+            'clabel': r'Events'
+        },
+
+
 
 }
 
@@ -395,7 +594,8 @@ branches = ['nTracks', 'nSPDHits',
             'e_minus_TRUEID', 'e_minus_MC_MOTHER_ID', 'e_minus_MC_GD_MOTHER_ID',
             'e_plus_TRUEID', 'e_plus_MC_MOTHER_ID', 'e_plus_MC_GD_MOTHER_ID',
             'e_plus_BremMultiplicity', 'e_minus_BremMultiplicity',
-            'K_Kst_PIDe', 'K_Kst_PIDK', 'e_plus_PIDe', 'e_plus_PIDK',
+            'K_Kst_PIDe', 'K_Kst_PIDK', 'e_plus_PIDe', 'e_plus_PIDK', 'e_minus_PIDe', 'e_minus_PIDK',
+            'K_Kst_ProbNNe', 'K_Kst_ProbNNk', 'e_plus_ProbNNe', 'e_plus_ProbNNk', 'e_minus_ProbNNe', 'e_minus_ProbNNk',
             'K_Kst_TRUEID', 'K_Kst_MC_MOTHER_ID', 'J_psi_1S_BKGCAT', 'B_plus_BKGCAT',
             'K_Kst_CaloEcalE', 'K_Kst_CaloHcalE', 'K_Kst_CaloSpdE', 'K_Kst_CaloPrsE',
             'e_plus_CaloEcalE', 'e_plus_CaloHcalE', 'e_plus_CaloSpdE', 'e_plus_CaloPrsE',
@@ -410,12 +610,14 @@ branches = ['nTracks', 'nSPDHits',
             'e_plus_TRUEP_X', 'e_minus_TRUEP_X', 'K_Kst_TRUEP_X',
             'e_plus_TRUEP_Y', 'e_minus_TRUEP_Y', 'K_Kst_TRUEP_Y',
             'e_plus_TRUEP_Z', 'e_minus_TRUEP_Z', 'K_Kst_TRUEP_Z',
-            'e_minus_PIDe',
             'e_plus_L0Calo_ECAL_xProjection', 'e_minus_L0Calo_ECAL_xProjection', 'K_Kst_L0Calo_HCAL_xProjection',
             'e_plus_L0Calo_ECAL_yProjection', 'e_minus_L0Calo_ECAL_yProjection', 'K_Kst_L0Calo_HCAL_yProjection',
             'J_psi_1S_M',
             'B_plus_M', 'B_plus_DTFM_M',
             'e_plus_RichDLLe', 'K_Kst_RichDLLe', 'e_minus_RichDLLe',
+            'e_plus_RichDLLk', 'K_Kst_RichDLLk', 'e_minus_RichDLLk',
+            'e_plus_UsedRich1Gas', 'K_Kst_UsedRich1Gas', 'e_minus_UsedRich1Gas',
+            'e_plus_UsedRich2Gas', 'K_Kst_UsedRich2Gas', 'e_minus_UsedRich2Gas',
             'e_plus_EcalPIDe', 'e_minus_EcalPIDe', 'K_Kst_EcalPIDe',
             'e_plus_HcalPIDe', 'e_minus_HcalPIDe', 'K_Kst_HcalPIDe',
             'e_plus_BremPIDe', 'e_minus_BremPIDe', 'K_Kst_BremPIDe',

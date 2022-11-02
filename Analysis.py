@@ -127,6 +127,7 @@ def read_file(path, branches, filename, maxevts=400000, PIDcut=3, skip1d=False, 
             full_histos2d_pol[pol] = {key: None for key in hist2d_dict.keys()}
             cut_histos2d_pol[pol] = {key: None for key in hist2d_dict.keys()}
 
+
         # open the root file
         if not path == '':
             sample = uproot.open(f'{path}/{prefix}_2018_{pol}.root')[treename]
@@ -136,8 +137,8 @@ def read_file(path, branches, filename, maxevts=400000, PIDcut=3, skip1d=False, 
 
         print(f'WORKING ON {prefix} {pol} FILE...')
 
-        # iterating over the file with a fixed batch size (20 000) and a given number of max events
-        for df in sample.iterate(branches, library='pd', entry_stop=maxevts, step_size=20000):
+        # iterating over the file with a fixed batch size (100 000) and a given number of max events
+        for df in sample.iterate(branches, library='pd', entry_stop=maxevts, step_size=100000):
 
             # deleting all but 0th subentries, removing subentry level
             if df.index.nlevels == 2:
@@ -416,11 +417,17 @@ def plot_hist(x, title, hist_dict, path='', PIDcut=3, normalize=False):
 
 
 def plot_hist2d(data, title, hist2d_dict, path='', PIDcut=3, mode='full'):
-    if mode not in ('full', 'cut'):
-        raise NotImplementedError(f"Plotting 2d histogram in mode {mode}; only ('full', 'cut') are supported")
+    if mode not in ('full', 'cut', 'eff'):
+        raise NotImplementedError(f"Plotting 2d histogram in mode {mode}; only ('full', 'cut', 'eff') are supported")
     plt.clf()
     fig, ax = plt.subplots()
-    title_stem = f', all PIDe > {PIDcut}' if mode == 'cut' else ''
+    if mode == 'cut':
+        title_stem = f', all PIDe > {PIDcut}'
+    elif mode == 'eff':
+        title_stem = f', cut efficiency'
+    else:
+        title_stem = ''
+
     plt_title = hist2d_dict[title]['plt_title'] + title_stem
 
     xn_bins = int(hist2d_dict[title]['x_bins'])
@@ -445,7 +452,7 @@ def plot_hist2d(data, title, hist2d_dict, path='', PIDcut=3, mode='full'):
 
     xs, ys = np.meshgrid(x_bins, y_bins)
     import matplotlib.colors as colors
-    if 'log' not in hist2d_dict[title]['cscale']:
+    if 'log' not in hist2d_dict[title]['cscale'] or mode == 'eff':
         h = ax.pcolor(xs, ys, data.T)  # , vmin=cmin, vmax=cmax)
     else:
         h = ax.pcolor(xs, ys, data.T, norm=colors.LogNorm())
@@ -454,8 +461,10 @@ def plot_hist2d(data, title, hist2d_dict, path='', PIDcut=3, mode='full'):
     plt.ylabel(ylabel)
     plt.xlabel(xlabel)
     plt.title(plt_title)
-    path_stem = title + '_' + mode + '.png'
+    path_stem = 'biplot_' + title + '_' + mode + '.png'
     plt.savefig(path + '/' + path_stem)
+
+
 
 
 def make_brem_hist(x, hist=None):
@@ -550,7 +559,7 @@ def plot_EoP_bremcat(x, brem_cat, ele='e_plus', mode='Full', path='', PIDcut=3):
 if __name__ == '__main__':
     path = ''
     filename = 'KJPsiee'
-    plot_path = 'Plots/' + str(filename) + '_truthmatched_masscut_K'
+    plot_path = 'Plots/' + str(filename) + '_0211_base'
     if not os.path.exists(plot_path):
         os.makedirs(plot_path)
 
@@ -560,7 +569,7 @@ if __name__ == '__main__':
     from service import branches  # too long of a list, decided to move it to service file
 
     PIDcut = 3
-    histograms, histograms2d = read_file(path, branches, filename, maxevts=100000, PIDcut=PIDcut, skip1d=True)
+    histograms, histograms2d = read_file(path, branches, filename, maxevts=2000000, PIDcut=PIDcut, skip1d=False)
 
     if histograms is not None:
         for key in hist_dict.keys():
@@ -568,8 +577,9 @@ if __name__ == '__main__':
             plot_hist(comp_dict, key, hist_dict=hist_dict, path=plot_path, PIDcut=PIDcut, normalize=True)
 
     if histograms2d is not None:
+        histograms2d['eff'] = {key: np.divide(histograms2d['cut'][key], histograms2d['full'][key]) for key in histograms2d['cut'].keys()}
         for key in hist2d_dict.keys():
-            for mode in ('full', 'cut'):
+            for mode in ('full', 'cut', 'eff'):
                 plot_hist2d(histograms2d[mode][key], key, hist2d_dict=hist2d_dict, path=plot_path, PIDcut=PIDcut,
                             mode=mode)
 
