@@ -560,6 +560,11 @@ if __name__ == '__main__':
     path = ''
     filename = 'KJPsiee'
     plot_path = 'Plots/' + str(filename) + '_0211_base'
+    username = os.getlogin()
+    if username == 'roman':
+        max_events = 200000
+    else:
+        max_events = 2000000
     if not os.path.exists(plot_path):
         os.makedirs(plot_path)
 
@@ -569,7 +574,8 @@ if __name__ == '__main__':
     from service import branches  # too long of a list, decided to move it to service file
 
     PIDcut = 3
-    histograms, histograms2d = read_file(path, branches, filename, maxevts=2000000, PIDcut=PIDcut, skip1d=False)
+
+    histograms, histograms2d = read_file(path, branches, filename, maxevts=max_events, PIDcut=PIDcut, skip1d=False)
 
     if histograms is not None:
         for key in hist_dict.keys():
