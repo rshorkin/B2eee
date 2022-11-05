@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+import datetime
 import sys
 import tensorflow as tf
 # import zfit
@@ -12,6 +13,52 @@ import tensorflow as tf
 from pathlib import Path
 
 from service import hist_dict, hist2d_dict
+
+
+def progress_indicator(current_progress, tot_num, step, previous_time=None, verbose=False):
+    str_current_progress = ' ' * (len(str(tot_num)) - len(str(current_progress))) + str(current_progress)
+    filled_num = ((current_progress * 100) // tot_num) // 5
+    str_bar = '[' + '#' * filled_num + ':' * (20 - filled_num) + ']' \
+        if tot_num - current_progress >= step else '[' + '#' * 20 + ']'
+
+    if previous_time is None:
+        previous_time = datetime.datetime.now()
+        str_ETA = '##:##'
+    else:
+        current_time = datetime.datetime.now()
+        chour = current_time.hour
+        cmin = current_time.minute
+        csec = current_time.second
+        cmicrosec = current_time.microsecond
+
+        diff = (chour - previous_time.hour) * 3600 + (cmin - previous_time.minute) * 60 + \
+               (csec - previous_time.second) + (cmicrosec - previous_time.microsecond) / 10**6
+        # ETA = diff * (tot_num - current_progress) // step
+        # if ETA < 30 or mean_elapsed is not None and mean_elapsed < 7:
+        #     previous_time = current_time
+        # else:
+        mean_elapsed = diff / (current_progress // (step - 1))
+        ETA = mean_elapsed * (tot_num - current_progress) / step
+
+        ETA_min = str(ETA // 60) if str(ETA // 60).index('.') > 1 else '0' + str(ETA // 60)
+        ETA_sec = str(ETA % 60)[:2] if str(ETA % 60).index('.') > 1 else '0' + str(ETA % 60)[0]
+        ETA_msec = str(round(ETA, 2))[-2:] if str(round(ETA, 2)).index('.') != len(str(round(ETA, 2))) - 2 \
+            else str(round(ETA, 2))[-1] + '0'
+        if ETA != 0.:
+            str_ETA = ETA_min[:-2] + ':' + ETA_sec + "'" + ETA_msec
+        else:
+            str_ETA = "00:00'00"
+
+    if verbose == False:
+        print(f'\rPROGRESS: {str_current_progress} / {tot_num} {str_bar} {str_ETA}', flush=True, end='')
+    elif '#' in str_ETA:
+        print(f'PROGRESS: {str_current_progress} / {tot_num} {str_bar} {str_ETA}')
+        print(f"FIRST STEP. TIMESTAMP: {previous_time}")
+    else:
+        print(f'PROGRESS: {str_current_progress} / {tot_num} {str_bar} {str_ETA}')
+        print(f"TIME DIFF: {diff} AFTER {(current_progress // step)} STEPS")
+        print(f'MEAN ELAPSED: {mean_elapsed}')
+    return previous_time
 
 
 def create_vars(data):
@@ -89,7 +136,7 @@ def create_vars(data):
     return data
 
 
-def read_file(path, branches, filename, maxevts=400000, PIDcut=3, skip1d=False, skip2d=False):
+def read_file(path, branches, filename, maxevts=400000, PIDcut=3, skip1d=False, skip2d=False, cut=None):
     # may want to skip building 1d or 2d for some tests
     if skip1d:
         print('Will not build any 1d histograms')
@@ -118,6 +165,7 @@ def read_file(path, branches, filename, maxevts=400000, PIDcut=3, skip1d=False, 
     # same procedure for both polarities
     for pol in ('MD', 'MU'):
         current_progress = 0
+        previous_time = None
 
         # create holding dicts for the current polarity
         if not skip1d:
@@ -126,7 +174,6 @@ def read_file(path, branches, filename, maxevts=400000, PIDcut=3, skip1d=False, 
         if not skip2d:
             full_histos2d_pol[pol] = {key: None for key in hist2d_dict.keys()}
             cut_histos2d_pol[pol] = {key: None for key in hist2d_dict.keys()}
-
 
         # open the root file
         if not path == '':
@@ -137,16 +184,23 @@ def read_file(path, branches, filename, maxevts=400000, PIDcut=3, skip1d=False, 
 
         print(f'WORKING ON {prefix} {pol} FILE...')
 
-        # iterating over the file with a fixed batch size (100 000) and a given number of max events
-        for df in sample.iterate(branches, library='pd', entry_stop=maxevts, step_size=100000):
+        # iterating over the file with a fixed batch size (20 000 or 100 000) and a given number of max events
+        step = 20000 if maxevts < 1000000 else 100000
+        for df in sample.iterate(branches, library='pd', entry_stop=maxevts, step_size=step):
 
             # deleting all but 0th subentries, removing subentry level
             if df.index.nlevels == 2:
                 df = df.loc[(slice(None), 0), :].droplevel(level=1)
 
-            # progress indicator, TODO: implement progress bar
+            # Transform booleans into 0 and 1 (e.g. UsedRICH1Gas is type bool)
+            if len(df.select_dtypes(include=['bool']).columns) > 0:
+                for column in df.select_dtypes(include=['bool']).columns:
+                    df[column] = np.select([df[column].eq(True), df[column].eq(False)], [1, 0], default=0)
+
+            # progress indicator
             current_progress = current_progress + len(df.index)
-            print(f'Currently at {current_progress} / {tot_num} events...')
+            # print(f'\rCurrently at {current_progress} / {tot_num} events...', flush=True, end='')
+            previous_time = progress_indicator(current_progress, tot_num, step, previous_time, verbose=False)
 
             # create new variables
             df = create_vars(df)
@@ -155,6 +209,12 @@ def read_file(path, branches, filename, maxevts=400000, PIDcut=3, skip1d=False, 
             # truthmatching, B_DTFM and J_Psi mass window cuts
             df = common_cuts(df, filename)
             df = mass_cuts(df, filename)
+
+            # Additional cuts:
+            if cut is not None:
+                df.query(cut, inplace=True)
+                if df is None or len(df.index) == 0:
+                    continue
 
             # saving the number of events at this stage (before PID cuts)
             full_num_events = full_num_events + len(df.index)
@@ -208,7 +268,13 @@ def read_file(path, branches, filename, maxevts=400000, PIDcut=3, skip1d=False, 
             # remove batch to save memory
             del df
             gc.collect()
+        print()
         print(f'FINISHED WITH {prefix} {pol} FILE!\n*********')
+
+    randkeys = list(hist_dict.keys())
+    if full_histos_pol['MD'][randkeys[0]] is None and full_histos_pol['MU'][randkeys[0]] is None:
+        print(Warning('Processing with given configuration yielded 0 pre-PID cut events'))
+        return None, None
 
     # setup dicts for histogram collection and add up the collected histograms from different polarities
     if not skip1d:
@@ -389,7 +455,10 @@ def plot_hist(x, title, hist_dict, path='', PIDcut=3, normalize=False):
     plt.clf()
 
     # from service import hist_dict
-    plt_title = hist_dict[title]['plt_title'] + f', PIDe > {PIDcut}'
+    if PIDcut:
+        plt_title = hist_dict[title]['plt_title'] + f', PIDe > {PIDcut}'
+    else:
+        plt_title = hist_dict[title]['plt_title']
     nbins = int(hist_dict[title]['n_bins'])
     xlabel = hist_dict[title]['xlabel']
     xmin = hist_dict[title]['xmin']
@@ -408,7 +477,7 @@ def plot_hist(x, title, hist_dict, path='', PIDcut=3, normalize=False):
             plt.ylabel(f'Events / {(xmax - xmin) / nbins}')
             plt.legend(loc='upper right')
     else:
-        plt.bar(height=x, x=bins, align='edge')
+        plt.bar(height=x, x=bins, width=bin_width, align='edge')
         plt.ylabel(f'Events / {(xmax - xmin) / nbins}')
     plt.xlabel(xlabel)
     plt.title(plt_title)
@@ -441,7 +510,7 @@ def plot_hist2d(data, title, hist2d_dict, path='', PIDcut=3, mode='full'):
     ymax = hist2d_dict[title]['ymax']
 
     clabel = hist2d_dict[title]['clabel']
-    cmin = hist2d_dict[title]['cmin']   # do we need these? How to estimate before building hist? Maybe just drop them
+    cmin = hist2d_dict[title]['cmin']  # do we need these? How to estimate before building hist? Maybe just drop them
     cmax = hist2d_dict[title]['cmax']
 
     xbin_width = (xmax - xmin) / xn_bins
@@ -463,8 +532,7 @@ def plot_hist2d(data, title, hist2d_dict, path='', PIDcut=3, mode='full'):
     plt.title(plt_title)
     path_stem = 'biplot_' + title + '_' + mode + '.png'
     plt.savefig(path + '/' + path_stem)
-
-
+    plt.close(fig)
 
 
 def make_brem_hist(x, hist=None):
@@ -559,7 +627,7 @@ def plot_EoP_bremcat(x, brem_cat, ele='e_plus', mode='Full', path='', PIDcut=3):
 if __name__ == '__main__':
     path = ''
     filename = 'KJPsiee'
-    plot_path = 'Plots/' + str(filename) + '_0211_base'
+    plot_path = 'Plots/' + str(filename) + '_0411_base_test'
     username = os.getlogin()
     if username == 'roman':
         max_events = 200000
@@ -578,18 +646,22 @@ if __name__ == '__main__':
     histograms, histograms2d = read_file(path, branches, filename, maxevts=max_events, PIDcut=PIDcut, skip1d=False)
 
     if histograms is not None:
+        print('**********\nBUILDING 1D HISTOGRAMS')
         for key in hist_dict.keys():
             comp_dict = {'Before cuts': histograms['full'][key], f'PIDe > {PIDcut}': histograms['cut'][key]}
             plot_hist(comp_dict, key, hist_dict=hist_dict, path=plot_path, PIDcut=PIDcut, normalize=True)
 
     if histograms2d is not None:
-        histograms2d['eff'] = {key: np.divide(histograms2d['cut'][key], histograms2d['full'][key]) for key in histograms2d['cut'].keys()}
+        print('**********\nBUILDING 2D HISTOGRAMS')
+        histograms2d['eff'] = {key: np.divide(histograms2d['cut'][key], histograms2d['full'][key]) for key in
+                               histograms2d['cut'].keys()}
         for key in hist2d_dict.keys():
             for mode in ('full', 'cut', 'eff'):
                 plot_hist2d(histograms2d[mode][key], key, hist2d_dict=hist2d_dict, path=plot_path, PIDcut=PIDcut,
                             mode=mode)
 
     if histograms is not None:
+        print('**********\nBUILDING 1D BREM HISTOGRAMS')
         for brem_cat in range(3):
             for mode in ('p', 'pTR'):
                 if brem_cat == 0 and mode == 'p':
